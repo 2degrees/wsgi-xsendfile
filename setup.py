@@ -4,7 +4,7 @@
 # Copyright (c) 2010, 2degrees Limited <http://dev.2degreesnetwork.com/>.
 # All Rights Reserved.
 #
-# This file is part of wsgi-auth-token <https://launchpad.net/wsgi-auth-token>,
+# This file is part of wsgi-xsendfile <https://launchpad.net/wsgi-xsendfile>,
 # which is subject to the provisions of the BSD at
 # <http://dev.2degreesnetwork.com/p/2degrees-license.html>. A copy of the
 # license should accompany this distribution. THIS SOFTWARE IS PROVIDED "AS IS"
@@ -22,9 +22,9 @@ here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.txt")).read()
 version = open(os.path.join(here, "VERSION.txt")).readline().rstrip()
 
-setup(name="wsgi-auth-token",
+setup(name="xsendfile",
       version=version,
-      description="Token-based URL access",
+      description="X-Sendfile implementation in Python/WSGI",
       long_description=README,
       classifiers=[
         "Development Status :: 3 - Alpha",
@@ -38,12 +38,12 @@ setup(name="wsgi-auth-token",
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "Topic :: Security",
         ],
-      keywords="authorization token url hot-link",
+      keywords="x-sendfile xsendfile x-accel-redirect authorization token url hot-link",
       author="Gustavo Narea (2degrees Limited)",
       author_email="2degrees-floss@2degreesnetwork.com",
-      url="https://launchpad.net/wsgi-auth-token",
+      url="https://launchpad.net/wsgi-xsendfile",
       license="BSD (http://dev.2degreesnetwork.com/p/2degrees-license.html)",
-      py_modules=["wsgi_auth_token"],
+      py_modules=["xsendfile"],
       zip_safe=False,
       tests_require=[
         "coverage",

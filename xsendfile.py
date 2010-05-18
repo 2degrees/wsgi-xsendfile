@@ -4,7 +4,7 @@
 # Copyright (c) 2010, 2degrees Limited <http://dev.2degreesnetwork.com/>.
 # All Rights Reserved.
 #
-# This file is part of wsgi-auth-token <https://launchpad.net/wsgi-auth-token>,
+# This file is part of wsgi-xsendfile <https://launchpad.net/wsgi-xsendfile>,
 # which is subject to the provisions of the BSD at
 # <http://dev.2degreesnetwork.com/p/2degrees-license.html>. A copy of the
 # license should accompany this distribution. THIS SOFTWARE IS PROVIDED "AS IS"
@@ -321,7 +321,7 @@ class AuthTokenApplication(XSendfileApplication):
 
 
 class AuthTokenException(Exception):
-    """Base class for exceptions raised by wsgi-auth-token."""
+    """Base class for exceptions raised by wsgi-xsendfile."""
     pass
 
 

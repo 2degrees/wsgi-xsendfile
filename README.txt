@@ -1,15 +1,21 @@
-*****************************************
-wsgi-auth-token -- Token-based URL access
-*****************************************
+*********************************************************
+wsgi-xsendfile -- ``X-Sendfile`` implementation in Python
+*********************************************************
 
-WSGI Auth Token allows you to generate links to static files for a fixed period
-of time; once the link expires, the file is no longer available.
+``X-Sendfile`` is a feature in Web servers which allow you to tell the Web
+server which static files in the filesystem it should serve. It works like this:
+The Web server gets an HTTP request which is passed on to your application,
+the application returns the path to the file in the filesystem that should be
+served (if any), and finally the Web **itself** serves the file.
 
-It's very performant because it doesn't serve the file by itself: It tells the
-server whether the file can be downloaded and where it is, and then the server
-itself serves it.
+You can use this for a number of things, like controlling access to static
+files, or dispatching them in a custom way.
 
-It is a light replacement for Apache's mod_auth_token implemented as a Python
-WSGI application but you can use it with your Java/PHP/whatever applications.
+This is implemented as a Python WSGI application.
+
+A replacement for Apache's `mod-auth-token
+<http://code.google.com/p/mod-auth-token/>`_, based on the ``X-Sendfile``
+application is also part of the distribution. It can be used along with any
+Web application, even if it's not written in Python.
 
 This project is sponsored by 2degrees Limited: http://dev.2degreesnetwork.com/

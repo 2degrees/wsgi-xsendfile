@@ -4,7 +4,7 @@
 # Copyright (c) 2010, 2degrees Limited <http://dev.2degreesnetwork.com/>.
 # All Rights Reserved.
 #
-# This file is part of wsgi-auth-token <https://launchpad.net/wsgi-auth-token>,
+# This file is part of wsgi-xsendfile <https://launchpad.net/wsgi-xsendfile>,
 # which is subject to the provisions of the BSD at
 # <http://dev.2degreesnetwork.com/p/2degrees-license.html>. A copy of the
 # license should accompany this distribution. THIS SOFTWARE IS PROVIDED "AS IS"
@@ -14,7 +14,7 @@
 #
 ##############################################################################
 """
-Unit test suite for wsgi-auth-token.
+Unit test suite for wsgi-xsendfile.
 
 """
 
@@ -25,8 +25,8 @@ from urllib import quote
 from nose.tools import assert_false, assert_raises, eq_, ok_
 from webtest import TestApp
 
-from wsgi_auth_token import (BadRootError, BadSenderError,
-    _BuiltinHashWrapper, TokenConfig, XSendfileApplication)
+from xsendfile import (BadRootError, BadSenderError, _BuiltinHashWrapper,
+                       TokenConfig, XSendfileApplication)
 
 
 # Short-cuts to directories in the fixtures:
