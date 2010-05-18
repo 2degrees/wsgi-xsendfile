@@ -25,7 +25,8 @@ from os import path
 from urllib import quote
 
 from paste.fileapp import FileApp
-from paste.httpexceptions import HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound
+from paste.httpexceptions import (HTTPForbidden, HTTPMethodNotAllowed,
+                                  HTTPNotFound)
 
 
 __all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
@@ -35,12 +36,6 @@ __all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
 _FORBIDDEN_RESPONSE = HTTPForbidden()
 _INVALID_METHOD_RESPONSE = HTTPMethodNotAllowed(headers=[("allow", "GET")])
 _NOT_FOUND_RESPONSE = HTTPNotFound()
-
-
-class TokenConfig(object):
-    
-    def get_url(self, file_path):
-        pass
 
 
 class XSendfileApplication(object):
@@ -183,6 +178,15 @@ def _complete_headers(file_path, headers):
     
     if encoding:
         headers.append(("Content-Encoding", encoding))
+
+
+#{ Auth token application
+
+
+class TokenConfig(object):
+    
+    def get_url(self, file_path):
+        pass
 
 
 class AuthTokenApplication(XSendfileApplication):
