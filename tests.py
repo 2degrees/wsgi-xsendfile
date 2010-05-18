@@ -25,8 +25,8 @@ from urllib import quote
 from nose.tools import assert_false, assert_raises, eq_, ok_
 from webtest import TestApp
 
-from xsendfile import (BadRootError, BadSenderError, _BuiltinHashWrapper,
-                       TokenConfig, XSendfileApplication)
+from xsendfile import (AuthTokenApplication, BadRootError, BadSenderError,
+                       _BuiltinHashWrapper, TokenConfig, XSendfileApplication)
 
 
 # Short-cuts to directories in the fixtures:
@@ -39,6 +39,9 @@ PROTECTED_DIR_SYMLINK = path.join(FIXTURES_DIR, "protected-directory-link")
 NON_EXISTING_DIR = path.join(FIXTURES_DIR, "does-not-exist")
 
 
+# A short-cut to the only file in a sub-directory:
+SUB_DIRECTORY_FILE = path.join("sub-directory", "baz.txt")
+
 # Files in the protected directory:
 FILES = {
     u'¡mañana!.txt': {'size': 42, 'type': "text/plain"},
@@ -48,7 +51,7 @@ FILES = {
     'foo.txt': {'size': 11, 'type': "text/plain"},
     'foo.txt.gz': {'size': 31, 'type': "text/plain", 'encoding': "gzip"},
     'no-extension': {'size': 5, 'type': "application/octet-stream"},
-    path.join("sub-directory", "baz.txt"): {'size': 12, 'type': "text/plain"},
+    SUB_DIRECTORY_FILE: {'size': 12, 'type': "text/plain"},
     }
 
 
@@ -317,7 +320,7 @@ class TestNginxXSendfileResponse(BaseTestFileSender):
 
 
 class TestTokenConfig(object):
-    """Tests for the the token configuration."""
+    """Unit tests for the the token configuration."""
     
     def setUp(self):
         self.config = TokenConfig(GOOD_TOKEN['secret'], timeout=120)
@@ -393,6 +396,65 @@ class TestHashWrapper(object):
     def test_sha1(self):
         hash = _BuiltinHashWrapper("sha1")
         eq_(hash("hello"), "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
+
+
+class TestAuthTokenApp(object):
+    """Acceptance tests for the auth token WGSI application."""
+    
+    def setUp(self):
+        self.config = TokenConfig(GOOD_TOKEN['secret'], timeout=120)
+        self.app = TestApp(AuthTokenApplication(PROTECTED_DIR, self.config))
+    
+    def test_expired_token(self):
+        """Files with expired tokens are not served; 410 response is given."""
+        five_minutes_ago = EPOCH - timedelta(minutes=5)
+        url_path = self.config._generate_url_path(GOOD_TOKEN['file'],
+                                                  five_minutes_ago)
+        
+        self.app.get(url_path, status=410)
+    
+    def test_invalid_digest(self):
+        """Files with invalid digests are not served; 404 response is given."""
+        # Let's change a few characters in the digest part of the URL:
+        good_url_path = self.config._generate_url_path(GOOD_TOKEN['file'],
+                                                       datetime.now())
+        bad_url_path = good_url_path[:3] + "xyz" + good_url_path[6:]
+        
+        self.app.get(bad_url_path, status=404)
+    
+    def test_invalid_timestamps(self):
+        """
+        Files with invalid timestamps are not served; 404 response is given.
+        
+        """
+        bad_timestamp = "xyz"
+        url_path = "/%s-%s/%s" % (GOOD_TOKEN['digest'], bad_timestamp,
+                                  GOOD_TOKEN['file'])
+        
+        self.app.get(url_path, status=404)
+    
+    def test_no_token(self):
+        """Files requestsed without token are not served; a 404 is returned."""
+        self.app.get("/%s" % GOOD_TOKEN['file'], status=404)
+    
+    def test_good_token_and_existing_file(self):
+        """Existing files requested with valid token are served."""
+        url_path = self.config.get_url_path(GOOD_TOKEN['file'])
+        
+        response = self.app.get(url_path, status=200)
+        ok_("X-Sendfile" in response.headers)
+        ok_(response.headers['X-Sendfile'].endswith(GOOD_TOKEN['file']))
+    
+    def test_good_token_and_existing_file_in_sub_directory(self):
+        """
+        Existing files in a sub-directory requested with valid token are served.
+        
+        """
+        url_path = self.config.get_url_path(SUB_DIRECTORY_FILE)
+        
+        response = self.app.get(url_path, status=200)
+        ok_("X-Sendfile" in response.headers)
+        ok_(response.headers['X-Sendfile'].endswith(SUB_DIRECTORY_FILE))
 
 
 #}

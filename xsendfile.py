@@ -20,6 +20,7 @@ Token-based URL access.
 
 import hashlib
 import os
+import re
 from datetime import datetime, timedelta
 from mimetypes import guess_type
 from os import path
@@ -308,13 +309,56 @@ class _BuiltinHashWrapper(object):
 
 
 class AuthTokenApplication(XSendfileApplication):
+    """
+    WSGI application that serves static files at URL paths that are valid for
+    a determined time.
+    
+    """
+    
+    _PATH_RE = re.compile(r'^/(?P<digest>\w+)-(?P<timestamp>[a-f0-9]+)/(?P<file>.+)')
     
     def __init__(self, root_directory, token_config, file_sender=None):
+        """
+        
+        :param root_directory: The absolute path to the root directory.
+        :type root_directory: :class:`basestring`
+        :param token_config: The token configuration object.
+        :type token_config: :class:`TokenConfig`
+        :param file_sender: The application to use to send the requested file;
+            defaults to the standard X-Sendfile.
+        :type file_sender: a string of ``standard``, ``nginx`` or ``serve``,
+            or a WSGI application.
+        
+        """
         super(AuthTokenApplication, self).__init__(root_directory, file_sender)
         self._token_config = token_config
     
     def __call__(self, environ, start_response):
-        pass
+        matches = self._PATH_RE.match(environ['PATH_INFO'])
+        
+        if matches:
+            # The request path matches the expected pattern. Let's extract the
+            # URL arguments:
+            digest = matches.group("digest")
+            hex_timestamp = matches.group("timestamp")
+            file = matches.group("file")
+            
+            dec_timestamp = int(hex_timestamp, 16)
+            token_time = datetime.fromtimestamp(dec_timestamp)
+            
+            if not self._token_config.is_current(token_time):
+                response = _GONE_RESPONSE
+            elif not self._token_config.is_valid_digest(digest, file, token_time):
+                response = _NOT_FOUND_RESPONSE
+            else:
+                environ['PATH_INFO'] = file
+                response = super(AuthTokenApplication, self).__call__
+        
+        else:
+            # The request path didn't match our expected pattern:
+            response = _NOT_FOUND_RESPONSE
+        
+        return response(environ, start_response)
 
 
 #{ Exceptions
