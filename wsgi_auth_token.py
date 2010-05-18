@@ -25,7 +25,7 @@ from os import path
 from urllib import quote
 
 from paste.fileapp import FileApp
-from webob.exc import HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound
+from paste.httpexceptions import HTTPForbidden, HTTPMethodNotAllowed, HTTPNotFound
 
 
 __all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
@@ -33,7 +33,7 @@ __all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
 
 
 _FORBIDDEN_RESPONSE = HTTPForbidden()
-_INVALID_METHOD_RESPONSE = HTTPMethodNotAllowed()
+_INVALID_METHOD_RESPONSE = HTTPMethodNotAllowed(headers=[("allow", "GET")])
 _NOT_FOUND_RESPONSE = HTTPNotFound()
 
 
@@ -155,7 +155,7 @@ class XSendfileApplication(object):
     
     @staticmethod
     def nginx_x_sendfile(environ, start_response, exc_info=None):
-        """Send the file in ``environ`` with Nginx'  X-Sendfile equivalent."""
+        """Send the file in ``environ`` with Nginx' X-Sendfile equivalent."""
         file_path = environ['wsgi_auth_token.requested_file']
         root_dir = environ['wsgi_auth_token.root_directory']
         rel_file_path = file_path[len(root_dir):]
@@ -187,7 +187,7 @@ def _complete_headers(file_path, headers):
 
 class AuthTokenApplication(XSendfileApplication):
     
-    def __init__(self, hash_algo="md5"):
+    def __init__(self, root_directory, hash_algo="md5"):
         self.hash_algo = hash_algo
     
     def __call__(self, environ, start_response):

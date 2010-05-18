@@ -50,7 +50,7 @@ setup(name="wsgi-auth-token",
         "nose",
         "WebTest >= 1.2"
         ],
-      install_requires=["WebOb >= 0.9.8", "Paste >= 1.7.3"],
+      install_requires=["Paste >= 1.7.3"],
       test_suite="nose.collector",
       entry_points = """\
       """
