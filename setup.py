@@ -16,7 +16,7 @@
 
 import os
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, "README.txt")).read()
@@ -43,13 +43,14 @@ setup(name="wsgi-auth-token",
       author_email="2degrees-floss@2degreesnetwork.com",
       url="https://launchpad.net/wsgi-auth-token",
       license="BSD (http://dev.2degreesnetwork.com/p/2degrees-license.html)",
-      packages=find_packages(exclude=["tests"]),
+      py_modules=["wsgi_auth_token"],
       zip_safe=False,
-      tests_require = [
+      tests_require=[
         "coverage",
+        "nose",
+        "WebTest >= 1.2"
         ],
-      install_requires=[
-        ],
+      install_requires=["WebOb >= 0.9.8", "Paste >= 1.7.3"],
       test_suite="nose.collector",
       entry_points = """\
       """
