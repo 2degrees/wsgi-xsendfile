@@ -20,20 +20,23 @@ Token-based URL access.
 
 import hashlib
 import os
+from datetime import datetime, timedelta
 from mimetypes import guess_type
 from os import path
+from time import mktime
 from urllib import quote
 
 from paste.fileapp import FileApp
-from paste.httpexceptions import (HTTPForbidden, HTTPMethodNotAllowed,
+from paste.httpexceptions import (HTTPForbidden,HTTPGone, HTTPMethodNotAllowed,
                                   HTTPNotFound)
 
 
-__all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
-           "TokenConfig", "XSendfileApplication"]
+__all__ = ["AuthTokenApplication", "BadRootError",
+           "BadSenderError", "TokenConfig", "XSendfileApplication"]
 
 
 _FORBIDDEN_RESPONSE = HTTPForbidden()
+_GONE_RESPONSE = HTTPGone()
 _INVALID_METHOD_RESPONSE = HTTPMethodNotAllowed(headers=[("allow", "GET")])
 _NOT_FOUND_RESPONSE = HTTPNotFound()
 
@@ -184,15 +187,131 @@ def _complete_headers(file_path, headers):
 
 
 class TokenConfig(object):
+    """
+    Configuration object for a protected directory.
     
-    def get_url(self, file_path):
-        pass
+    """
+    
+    def __init__(self, secret, hash_algo="md5", timeout=120):
+        """
+        
+        :param secret: The secret string shared by the application that
+            generates the links and the WSGI application that serves the files.
+        :type secret: :class:`basestring`
+        :param hash_algo: The name of the built-in hashing algorithm to use or
+            a callable that returns the required (hexadecimal) digest.
+        :type hash_algo: :class:`basestring` or callable
+        :param timeout: The time during which a token is valid (in seconds)
+        :type timeout: :class:`int`
+        
+        """
+        self._secret = secret
+        self._timeout = timedelta(seconds=timeout)
+        
+        # Validating the hashing algorithm:
+        if hasattr(hash_algo, "__call__"):
+            # It's a function which may implement a non-standard hashing algo.
+            # Not using callable() for forward compatibility with Py3k.
+            self._hash_algo = hash_algo
+        else:
+            # It must be an string representing a built-in hashing algorithm,
+            # otherwise an exception would be raised:
+            hashlib.new(hash_algo)
+            self._hash_algo = _BuiltinHashWrapper(hash_algo)
+    
+    def is_valid_digest(self, digest, file_name, time):
+        """
+        Report whether ``digest`` is the valid digest for ``file_name`` and
+        ``time``.
+        
+        :param digest: The (hexadecimal) digest string.
+        :type digest: :class:`basestring`
+        :param file_name: The path to the file, which could not exist.
+        :type file_name: :class:`basestring`
+        :param time: The time supposedly associated to the ``digest``.
+        :type time: :class:`datetime.datetime`
+        :rtype: :class:`bool`
+        
+        """
+        hex_timestamp = self._to_hex_timestamp(time)
+        expected_digest = self._get_digest(file_name, hex_timestamp)
+        
+        return expected_digest == digest
+    
+    def is_current(self, generation_time):
+        """
+        Report whether a token ``generation_time`` is considered as expired.
+        
+        :param generation_time: The time when a URL was generated.
+        :type generation_time: :class:`datetime.datetime`
+        :rtype: :class:`bool`
+        
+        """
+        deadline = generation_time + self._timeout
+        now = datetime.now()
+        
+        return now <= deadline
+    
+    def get_url_path(self, file_name):   #pragma:no cover
+        """
+        Get the protected URL path for ``file_name``.
+        
+        :param file_name: The file to be served.
+        :type file_name: :class:`basestring`
+        :rtype: :class:`basestring`
+        
+        """
+        # This method cannot be unit tested because its output depends on the
+        # time when it's called.
+        now = datetime.now()
+        return self._generate_url_path(file_name, now)
+    
+    #{ Internal utilities
+    
+    def _generate_url_path(self, file_name, time):
+        """Generate protected URL path for ``file_name``"""
+        hex_timestamp = self._to_hex_timestamp(time)
+        digest = self._get_digest(file_name, hex_timestamp)
+        
+        url_path = "/%s-%s/%s" % (digest, hex_timestamp, file_name)
+        return url_path
+    
+    def _get_digest(self, file_name, hex_timestamp):
+        """Generate a digest message for ``file_name``."""
+        digest = self._hash_algo(self._secret + file_name + hex_timestamp)
+        return digest
+    
+    @staticmethod
+    def _to_hex_timestamp(time):
+        """
+        Convert :class:`datetime` ``time`` instance to a hexadecimal timestamp
+        string.
+        
+        """
+        return "%x" % mktime(time.timetuple())
+    
+    #}
+
+
+class _BuiltinHashWrapper(object):
+    """Wrapper for the built-in hash functions in the standard library."""
+    
+    def __init__(self, algorithm_name):
+        self._algorithm_name = algorithm_name
+    
+    def __call__(self, contents):
+        hash = hashlib.new(self._algorithm_name)
+        hash.update(contents)
+        
+        digest = hash.hexdigest()
+        return digest
 
 
 class AuthTokenApplication(XSendfileApplication):
     
-    def __init__(self, root_directory, hash_algo="md5"):
-        self.hash_algo = hash_algo
+    def __init__(self, root_directory, token_config, file_sender=None):
+        super(AuthTokenApplication, self).__init__(root_directory, file_sender)
+        self._token_config = token_config
     
     def __call__(self, environ, start_response):
         pass

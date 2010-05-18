@@ -18,14 +18,18 @@ Unit test suite for wsgi-auth-token.
 
 """
 
+from datetime import datetime, timedelta
 from os import path
 from urllib import quote
 
-from nose.tools import assert_raises, eq_, ok_
+from nose.tools import assert_false, assert_raises, eq_, ok_
 from webtest import TestApp
 
-from wsgi_auth_token import XSendfileApplication, BadRootError, BadSenderError
+from wsgi_auth_token import (BadRootError, BadSenderError,
+    _BuiltinHashWrapper, TokenConfig, XSendfileApplication)
 
+
+# Short-cuts to directories in the fixtures:
 ROOT_DIR = path.dirname(__file__)
 FIXTURES_DIR = path.join(ROOT_DIR, "test-fixtures")
 PROTECTED_DIR = path.join(FIXTURES_DIR, "protected-directory")
@@ -33,8 +37,6 @@ PROTECTED_SUB_DIR = path.join(PROTECTED_DIR, "sub-directory")
 UNPROTECTED_DIR = path.join(FIXTURES_DIR, "unprotected-directory")
 PROTECTED_DIR_SYMLINK = path.join(FIXTURES_DIR, "protected-directory-link")
 NON_EXISTING_DIR = path.join(FIXTURES_DIR, "does-not-exist")
-
-PROTECTED_DIR_ENCODED = quote(PROTECTED_DIR)
 
 
 # Files in the protected directory:
@@ -48,6 +50,28 @@ FILES = {
     'no-extension': {'size': 5, 'type': "application/octet-stream"},
     path.join("sub-directory", "baz.txt"): {'size': 12, 'type': "text/plain"},
     }
+
+
+# Hashing function that does nothing:
+USELESS_HASH_ALGO = lambda contents: contents
+
+
+# The time to use as reference for the time-dependent operations.
+EPOCH = datetime.now()
+
+
+# The properties of a token that is known to be valid:
+GOOD_TOKEN = {
+    'time': datetime(2010, 5, 18, 13, 44, 18, 788690),
+    'hex_timestamp': "4bf28ba2",
+    'digest': "11b98caf339fb67cf1514512298fdc67",
+    'file': "foo.txt",
+    'secret': "s3cr3t",
+    }
+# The path that must be generated for GOOD_TOKEN:
+GOOD_TOKEN_PATH = "/%s-%s/%s" % (GOOD_TOKEN['digest'],
+                                 GOOD_TOKEN['hex_timestamp'],
+                                 GOOD_TOKEN['file'])
 
 
 class TestXSendfileConstructor(object):
@@ -287,6 +311,88 @@ class TestNginxXSendfileResponse(BaseTestFileSender):
         
         ok_("X-Accel-Redirect" in response.headers)
         eq_(response.headers['X-Accel-Redirect'], expected_file_path)
+
+
+#{ Tests for the auth token
+
+
+class TestTokenConfig(object):
+    """Tests for the the token configuration."""
+    
+    def setUp(self):
+        self.config = TokenConfig(GOOD_TOKEN['secret'], timeout=120)
+    
+    #{ Checking the hashing algorithm validation in the constructor
+    
+    def test_known_hashing_algorithm(self):
+        """Built-in hashing algorithms are supported out-of-the-box."""
+        TokenConfig("s3cr3t", "sha1")
+    
+    def test_unknown_hashling_algorith(self):
+        """Unknown hashing algo identifiers are caught."""
+        assert_raises(ValueError, TokenConfig, "s2cr3t", "non-existing")
+    
+    def test_custom_hashling_algorith(self):
+        """Custom hashing functions are supported if they are callable."""
+        TokenConfig("s2cr3t", USELESS_HASH_ALGO)
+    
+    #{ Tests for the token expiration verification
+    
+    def test_expired_token(self):
+        """Expired tokens must be caught."""
+        five_minutes_ago = EPOCH - timedelta(minutes=5)
+        assert_false(self.config.is_current(five_minutes_ago))
+    
+    def test_current_token(self):
+        """Tokens which have not timed out are obviously taken."""
+        ok_(self.config.is_current(datetime.now()))
+    
+    def test_future_token(self):
+        """Future tokens are accepted."""
+        five_hours_later = EPOCH + timedelta(hours=5)
+        ok_(self.config.is_current(five_hours_later))
+    
+    #{ Tests for the token digest validation
+    
+    def test_validating_invalid_digest(self):
+        """Bad digests are caught."""
+        # A bad digest:
+        bad_digest = "5d41402abc4b2a76b9719d911017c592"
+        assert_false(self.config.is_valid_digest(bad_digest, GOOD_TOKEN['file'],
+                                                 GOOD_TOKEN['time']))
+    
+    def test_validating_valid_digest(self):
+        """Good digests are obviously taken as valid."""
+        # A bad digest:
+        ok_(self.config.is_valid_digest(GOOD_TOKEN['digest'], GOOD_TOKEN['file'],
+                                        GOOD_TOKEN['time']))
+    
+    #}
+    
+    def test_url_path_generation(self):
+        """
+        The generated URL must include the token, the timestamp and the
+        requested file.
+        
+        The result is compared against a known good URL path.
+        
+        """
+        generated_path = self.config._generate_url_path(GOOD_TOKEN['file'],
+                                                        GOOD_TOKEN['time'])
+        
+        eq_(generated_path, GOOD_TOKEN_PATH)
+
+
+class TestHashWrapper(object):
+    """Unit tests for the built-in hash wrapper."""
+    
+    def test_md5(self):
+        hash = _BuiltinHashWrapper("md5")
+        eq_(hash("hello"), "5d41402abc4b2a76b9719d911017c592")
+    
+    def test_sha1(self):
+        hash = _BuiltinHashWrapper("sha1")
+        eq_(hash("hello"), "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
 
 
 #}
