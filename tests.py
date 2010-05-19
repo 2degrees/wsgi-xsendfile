@@ -236,8 +236,8 @@ class BaseTestFileSender(object):
     def get_file(self, file_name, **extra_environ):
         """Request the ``file_name`` and return the response."""
         absolute_path_to_file = path.join(PROTECTED_DIR, file_name)
-        extra_environ['wsgi_auth_token.requested_file'] = absolute_path_to_file
-        extra_environ['wsgi_auth_token.root_directory'] = PROTECTED_DIR
+        extra_environ['xsendfile.requested_file'] = absolute_path_to_file
+        extra_environ['xsendfile.root_directory'] = PROTECTED_DIR
         
         return self.app.get("/", status=200, extra_environ=extra_environ)
     

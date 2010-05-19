@@ -129,8 +129,8 @@ class XSendfileApplication(object):
         
         else:
             # The requested file can be served:
-            environ['wsgi_auth_token.requested_file'] = file_path
-            environ['wsgi_auth_token.root_directory'] = self._root_directory
+            environ['xsendfile.requested_file'] = file_path
+            environ['xsendfile.root_directory'] = self._root_directory
             response = self._sender
         
         return response(environ, start_response)
@@ -138,13 +138,13 @@ class XSendfileApplication(object):
     @staticmethod
     def serve_file(environ, start_response):
         """Serve the file in ``environ`` directly."""
-        file_app = FileApp(environ['wsgi_auth_token.requested_file'])
+        file_app = FileApp(environ['xsendfile.requested_file'])
         return file_app(environ, start_response)
     
     @staticmethod
     def x_sendfile(environ, start_response, exc_info=None):
         """Send the file in ``environ`` with the standard X-Sendfile header."""
-        file_path = environ['wsgi_auth_token.requested_file']
+        file_path = environ['xsendfile.requested_file']
         
         headers = [("X-Sendfile", quote(file_path.encode("utf-8")))]
         _complete_headers(file_path, headers)
@@ -155,8 +155,8 @@ class XSendfileApplication(object):
     @staticmethod
     def nginx_x_sendfile(environ, start_response, exc_info=None):
         """Send the file in ``environ`` with Nginx' X-Sendfile equivalent."""
-        file_path = environ['wsgi_auth_token.requested_file']
-        root_dir = environ['wsgi_auth_token.root_directory']
+        file_path = environ['xsendfile.requested_file']
+        root_dir = environ['xsendfile.root_directory']
         rel_file_path = file_path[len(root_dir):]
         
         headers = [("X-Accel-Redirect", quote(rel_file_path.encode("utf-8")))]
