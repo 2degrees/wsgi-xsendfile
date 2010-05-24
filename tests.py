@@ -26,7 +26,8 @@ from nose.tools import assert_false, assert_raises, eq_, ok_
 from webtest import TestApp
 
 from xsendfile import (AuthTokenApplication, BadRootError, BadSenderError,
-                       _BuiltinHashWrapper, TokenConfig, XSendfileApplication)
+                       _BuiltinHashWrapper, TokenConfig, _Sendfile,
+                       XSendfileApplication)
 
 
 # Short-cuts to directories in the fixtures:
@@ -123,7 +124,8 @@ class TestXSendfileConstructor(object):
         
         """
         app = XSendfileApplication(PROTECTED_DIR, "standard")
-        eq_(app._sender, XSendfileApplication.x_sendfile)
+        ok_(isinstance(app._sender, _Sendfile))
+        eq_(app._sender.file_path_header, "X-Sendfile")
     
     def test_nginx_sender(self):
         """
@@ -132,7 +134,8 @@ class TestXSendfileConstructor(object):
         
         """
         app = XSendfileApplication(PROTECTED_DIR, "nginx")
-        eq_(app._sender, XSendfileApplication.nginx_x_sendfile)
+        ok_(isinstance(app._sender, _Sendfile))
+        eq_(app._sender.file_path_header, "X-Accel-Redirect")
     
     def test_custom_sender(self):
         """A custom sender callable can be used."""
@@ -230,6 +233,8 @@ class BaseTestFileSender(object):
     
     sender = None
     
+    file_path_header = None
+    
     def __init__(self):
         self.app = TestApp(self.sender)
     
@@ -251,11 +256,11 @@ class BaseTestFileSender(object):
             ok_("Content-Encoding" not in response.headers)
     
     def verify_file(self, response, file_name):
-        """
-        Make sure that the file we received in ``response`` is the right one.
+        file_name = file_name.encode("utf-8")
+        expected_file_path = quote(path.join(PROTECTED_DIR, file_name))
         
-        """
-        raise NotImplementedError
+        ok_(self.file_path_header in response.headers)
+        eq_(response.headers[self.file_path_header], expected_file_path)
     
     def test_downloads(self):
         """Run acceptance tests for all the known files in the fixtures."""
@@ -289,14 +294,9 @@ class TestXSendfileResponse(BaseTestFileSender):
     
     """
     
-    sender = staticmethod(XSendfileApplication.x_sendfile)
+    file_path_header = "X-Sendfile"
     
-    def verify_file(self, response, file_name):
-        file_name = file_name.encode("utf-8")
-        expected_file_path = quote(path.join(PROTECTED_DIR, file_name))
-        
-        ok_("X-Sendfile" in response.headers)
-        eq_(response.headers['X-Sendfile'], expected_file_path)
+    sender = _Sendfile(file_path_header)
 
 
 class TestNginxXSendfileResponse(BaseTestFileSender):
@@ -306,14 +306,9 @@ class TestNginxXSendfileResponse(BaseTestFileSender):
     
     """
     
-    sender = staticmethod(XSendfileApplication.nginx_x_sendfile)
+    file_path_header = "X-Accel-Redirect"
     
-    def verify_file(self, response, file_name):
-        file_name = file_name.encode("utf-8")
-        expected_file_path = quote("/%s" % file_name)
-        
-        ok_("X-Accel-Redirect" in response.headers)
-        eq_(response.headers['X-Accel-Redirect'], expected_file_path)
+    sender = _Sendfile(file_path_header)
 
 
 #{ Tests for the auth token

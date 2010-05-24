@@ -84,9 +84,9 @@ class XSendfileApplication(object):
         
         # Validating the file sender:
         if not file_sender or file_sender == "standard":
-            sender = self.x_sendfile
+            sender = _Sendfile("X-Sendfile")
         elif file_sender == "nginx":
-            sender = self.nginx_x_sendfile
+            sender = _Sendfile("X-Accel-Redirect")
         elif file_sender == "serve":
             sender = self.serve_file
         elif hasattr(file_sender, "__call__"):
@@ -130,7 +130,6 @@ class XSendfileApplication(object):
         else:
             # The requested file can be served:
             environ['xsendfile.requested_file'] = file_path
-            environ['xsendfile.root_directory'] = self._root_directory
             response = self._sender
         
         return response(environ, start_response)
@@ -140,29 +139,22 @@ class XSendfileApplication(object):
         """Serve the file in ``environ`` directly."""
         file_app = FileApp(environ['xsendfile.requested_file'])
         return file_app(environ, start_response)
+
+
+class _Sendfile(object):
+    """Auxiliar WSGI applications that sends the file present in the environ."""
     
-    @staticmethod
-    def x_sendfile(environ, start_response, exc_info=None):
-        """Send the file in ``environ`` with the standard X-Sendfile header."""
+    def __init__(self, file_path_header):
+        self.file_path_header = file_path_header
+    
+    def __call__(self, environ, start_response):
+        """Send the file in ``environ`` with the X-Sendfile header."""
         file_path = environ['xsendfile.requested_file']
         
-        headers = [("X-Sendfile", quote(file_path.encode("utf-8")))]
+        headers = [(self.file_path_header, quote(file_path.encode("utf-8")))]
         _complete_headers(file_path, headers)
         
-        start_response("200 OK", headers, exc_info)
-        return []
-    
-    @staticmethod
-    def nginx_x_sendfile(environ, start_response, exc_info=None):
-        """Send the file in ``environ`` with Nginx' X-Sendfile equivalent."""
-        file_path = environ['xsendfile.requested_file']
-        root_dir = environ['xsendfile.root_directory']
-        rel_file_path = file_path[len(root_dir):]
-        
-        headers = [("X-Accel-Redirect", quote(rel_file_path.encode("utf-8")))]
-        _complete_headers(file_path, headers)
-        
-        start_response("200 OK", headers, exc_info)
+        start_response("200 OK", headers)
         return []
 
 
