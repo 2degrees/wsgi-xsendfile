@@ -152,7 +152,7 @@ class _Sendfile(object):
         _complete_headers(environ['xsendfile.requested_file'], headers)
         
         start_response("200 OK", headers)
-        return []
+        return [""]
     
     def get_file(self, environ): # pragma:no cover
         """Return the path/URI to the file to be served."""
