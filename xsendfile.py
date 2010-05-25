@@ -25,15 +25,15 @@ from datetime import datetime, timedelta
 from mimetypes import guess_type
 from os import path
 from time import mktime
-from urllib import quote
+from urllib import quote, unquote
 
 from paste.fileapp import FileApp
 from paste.httpexceptions import (HTTPForbidden,HTTPGone, HTTPMethodNotAllowed,
                                   HTTPNotFound)
 
 
-__all__ = ["AuthTokenApplication", "BadRootError",
-           "BadSenderError", "TokenConfig", "XSendfileApplication"]
+__all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
+           "NginxSendfile", "TokenConfig", "XSendfile", "XSendfileApplication"]
 
 
 _FORBIDDEN_RESPONSE = HTTPForbidden()
@@ -84,9 +84,9 @@ class XSendfileApplication(object):
         
         # Validating the file sender:
         if not file_sender or file_sender == "standard":
-            sender = _Sendfile("X-Sendfile")
+            sender = XSendfile()
         elif file_sender == "nginx":
-            sender = _Sendfile("X-Accel-Redirect")
+            sender = NginxSendfile()
         elif file_sender == "serve":
             sender = self.serve_file
         elif hasattr(file_sender, "__call__"):
@@ -144,18 +144,55 @@ class XSendfileApplication(object):
 class _Sendfile(object):
     """Auxiliar WSGI applications that sends the file present in the environ."""
     
-    def __init__(self, file_path_header):
-        self.file_path_header = file_path_header
-    
     def __call__(self, environ, start_response):
         """Send the file in ``environ`` with the X-Sendfile header."""
-        file_path = environ['xsendfile.requested_file']
+        file_ = self.get_file(environ)
         
-        headers = [(self.file_path_header, quote(file_path.encode("utf-8")))]
-        _complete_headers(file_path, headers)
+        headers = [(self.file_path_header, quote(file_.encode("utf-8")))]
+        _complete_headers(environ['xsendfile.requested_file'], headers)
         
         start_response("200 OK", headers)
         return []
+    
+    def get_file(self, environ): # pragma:no cover
+        """Return the path/URI to the file to be served."""
+        raise NotImplementedError
+
+
+class XSendfile(_Sendfile):
+    """File sender for the standard X-Sendfile."""
+    
+    file_path_header = "X-Sendfile"
+    
+    def get_file(self, environ):
+        """Return the requested file in the ``environ`` as is."""
+        return environ['xsendfile.requested_file']
+
+
+class NginxSendfile(_Sendfile):
+    """File sender for the Nginx' X-Sendfile equivalent."""
+    
+    file_path_header = "X-Accel-Redirect"
+    
+    def __init__(self, redirect_location="/-internal-"):
+        """
+        
+        :param redirect_location: The prefix of the path to the internal
+            location of the file, with ``SCRIPT_NAME`` preppended (if present).
+        
+        """
+        self._redirect_location = redirect_location
+    
+    def get_file(self, environ):
+        """
+        Return the path to the requested file under {SCRIPT_NAME}/-internal-/.
+        
+        """
+        script_name = unquote(environ['SCRIPT_NAME']).decode("utf8")
+        path_info = unquote(environ['PATH_INFO']).decode("utf8")
+        file_path =  "%s%s%s" % (script_name, self._redirect_location, path_info)
+        
+        return file_path
 
 
 def _complete_headers(file_path, headers):
