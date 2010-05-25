@@ -189,8 +189,9 @@ class NginxSendfile(_Sendfile):
         
         """
         script_name = unquote(environ['SCRIPT_NAME']).decode("utf8")
-        path_info = unquote(environ['PATH_INFO']).decode("utf8")
-        file_path =  "%s%s%s" % (script_name, self._redirect_location, path_info)
+        path_info = unquote(environ['PATH_INFO']).lstrip("/").decode("utf8")
+        file_path =  "%s%s/%s" % (script_name, self._redirect_location,
+                                  path_info)
         
         return file_path
 
