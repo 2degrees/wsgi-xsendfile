@@ -85,14 +85,18 @@ class XSendfileApplication(object):
         # Validating the file sender:
         if not file_sender or file_sender == "standard":
             sender = XSendfile()
+            
         elif file_sender == "nginx":
             sender = NginxSendfile()
+            
         elif file_sender == "serve":
             sender = self.serve_file
+            
         elif hasattr(file_sender, "__call__"):
             # The sender is a WSGI application.
             # Not using callable() for forward compatibility with Py3k.
             sender = file_sender
+            
         else:
             raise BadSenderError("Unknown file sender %s" % file_sender)
         
@@ -119,7 +123,7 @@ class XSendfileApplication(object):
             response = _INVALID_METHOD_RESPONSE
         
         elif (not file_path.startswith(self._root_directory) or
-            file_path == self._root_directory):
+              file_path == self._root_directory):
             # The file requested is outside of the root or it's the root itself:
             response = _FORBIDDEN_RESPONSE
         
@@ -129,7 +133,7 @@ class XSendfileApplication(object):
         
         else:
             # The requested file can be served:
-            environ['xsendfile.requested_file'] = file_path
+            environ['xsendfile.requested_file'] = file_path.decode("utf8")
             response = self._sender
         
         return response(environ, start_response)
@@ -147,8 +151,9 @@ class _Sendfile(object):
     def __call__(self, environ, start_response):
         """Send the file in ``environ`` with the X-Sendfile header."""
         file_ = self.get_file(environ)
+        encoded_file = file_.encode("utf-8")
         
-        headers = [(self.file_path_header, quote(file_.encode("utf-8")))]
+        headers = [(self.file_path_header, quote(encoded_file))]
         _complete_headers(environ['xsendfile.requested_file'], headers)
         
         start_response("200 OK", headers)
@@ -384,17 +389,19 @@ class AuthTokenApplication(XSendfileApplication):
             # URL arguments:
             digest = matches.group("digest")
             hex_timestamp = matches.group("timestamp")
-            file = matches.group("file")
+            encoded_path = matches.group("file")
+            
+            path = encoded_path.decode("utf8")
             
             dec_timestamp = int(hex_timestamp, 16)
             token_time = datetime.fromtimestamp(dec_timestamp)
             
             if not self._token_config.is_current(token_time):
                 response = _GONE_RESPONSE
-            elif not self._token_config.is_valid_digest(digest, file, token_time):
+            elif not self._token_config.is_valid_digest(digest, path, token_time):
                 response = _NOT_FOUND_RESPONSE
             else:
-                environ['PATH_INFO'] = file
+                environ['PATH_INFO'] = encoded_path
                 response = super(AuthTokenApplication, self).__call__
         
         else:

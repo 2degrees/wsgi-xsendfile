@@ -64,21 +64,34 @@ USELESS_HASH_ALGO = lambda contents: contents
 # The time to use as reference for the time-dependent operations.
 EPOCH = datetime.now()
 
+# Time to use as reference in all the tests:
+FIXED_TIME = datetime(2010, 5, 18, 13, 44, 18, 788690)
+FIXED_TIME_HEX = "%x" % mktime(FIXED_TIME.timetuple())
+
+# The shared secret to be used in all the auth token tests:
+SECRET = "s3cr3t"
 
 # The properties of a token that is known to be valid:
-_good_token_time = datetime(2010, 5, 18, 13, 44, 18, 788690)
+
 GOOD_TOKEN = {
     'digest': "11b98caf339fb67cf1514512298fdc67",
     'file': "foo.txt",
-    'secret': "s3cr3t",
-    'time': _good_token_time,
-    # mktime() returns different values across Python versions:
-    'hex_timestamp': "%x" % mktime(_good_token_time.timetuple()),
     }
 # The path that must be generated for GOOD_TOKEN:
 GOOD_TOKEN_PATH = "/%s-%s/%s" % (GOOD_TOKEN['digest'],
-                                 GOOD_TOKEN['hex_timestamp'],
+                                 FIXED_TIME_HEX,
                                  GOOD_TOKEN['file'])
+
+
+GOOD_UNICODE_TOKEN = {
+    'digest': "cf74d859aab5d1ce9bbc4a92fd91b0e2",
+    'file': u'¡mañana!.txt',
+    'urlencoded_file': '%C2%A1ma%C3%B1ana%21.txt',
+    }
+# The path that must be generated for GOOD_TOKEN:
+GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (GOOD_UNICODE_TOKEN['digest'],
+                                         FIXED_TIME_HEX,
+                                         GOOD_UNICODE_TOKEN['file'])
 
 
 class TestXSendfileConstructor(object):
@@ -209,6 +222,15 @@ class TestXSendfileRequests(object):
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'], path.join(PROTECTED_DIR, "foo.txt"))
     
+    def test_existing_file_with_non_ascii_name(self):
+        """Files with non-ASCII names are supported."""
+        url_encoded_path = "/%s" % quote("¡mañana!.txt")
+        response = self.app.get(url_encoded_path, status=200)
+        
+        ok_("X-Sendfile" in response.headers)
+        eq_(response.headers['X-Sendfile'],
+            path.join(PROTECTED_DIR, url_encoded_path.lstrip("/")))
+    
     def test_existing_file_with_method_other_than_get(self):
         """Only GET requests are supported."""
         # Methods OPTIONS, HEAD, TRACE and CONNECT are not supported by WebTest:
@@ -246,9 +268,9 @@ class BaseTestFileSender(object):
         extra_environ['xsendfile.root_directory'] = PROTECTED_DIR
         
         extra_environ['SCRIPT_NAME'] = SCRIPT_NAME
-        extra_environ['PATH_INFO'] = "/%s" % quote(file_name.encode("utf8"))
+        path_info = "/%s" % quote(file_name.encode("utf8"))
         
-        return self.app.get("/", status=200, extra_environ=extra_environ)
+        return self.app.get(path_info, status=200, extra_environ=extra_environ)
     
     def verify_headers(self, response, file_attributes):
         """Validate the HTTP headers received for the file."""
@@ -340,7 +362,7 @@ class TestTokenConfig(object):
     """Unit tests for the the token configuration."""
     
     def setUp(self):
-        self.config = TokenConfig(GOOD_TOKEN['secret'], timeout=120)
+        self.config = TokenConfig(SECRET, timeout=120)
     
     #{ Checking the hashing algorithm validation in the constructor
     
@@ -379,13 +401,13 @@ class TestTokenConfig(object):
         # A bad digest:
         bad_digest = "5d41402abc4b2a76b9719d911017c592"
         assert_false(self.config.is_valid_digest(bad_digest, GOOD_TOKEN['file'],
-                                                 GOOD_TOKEN['time']))
+                                                 FIXED_TIME))
     
     def test_validating_valid_digest(self):
         """Good digests are obviously taken as valid."""
         # A bad digest:
         ok_(self.config.is_valid_digest(GOOD_TOKEN['digest'], GOOD_TOKEN['file'],
-                                        GOOD_TOKEN['time']))
+                                        FIXED_TIME))
     
     #}
     
@@ -398,7 +420,7 @@ class TestTokenConfig(object):
         
         """
         generated_path = self.config._generate_url_path(GOOD_TOKEN['file'],
-                                                        GOOD_TOKEN['time'])
+                                                        FIXED_TIME)
         
         eq_(generated_path, GOOD_TOKEN_PATH)
     
@@ -407,17 +429,18 @@ class TestTokenConfig(object):
         Non-ASCII URL paths are supported.
         
         """
-        config = TokenConfig(GOOD_TOKEN['secret'], timeout=120, encoding="utf8")
+        config = TokenConfig(SECRET, timeout=120, encoding="utf8")
         
-        # "你好/mañana.pdf":
-        url_path = u"\xe4\xbd\xa0\xe5\xa5\xbd/ma\xc3\xb1ana.pdf"
+        expected_path = "/%s-%s/%s" % (
+            GOOD_UNICODE_TOKEN['digest'],
+            FIXED_TIME_HEX,
+            GOOD_UNICODE_TOKEN['urlencoded_file'],
+            )
         
-        expected_path = "/42b0fb830175ec447d44b694ca36291f-%s" \
-                        "/%%C3%%A4%%C2%%BD%%C2%%A0%%C3%%A5%%C2%%A5%%C2%%BD" \
-                        "/ma%%C3%%83%%C2%%B1ana.pdf"
-        expected_path %= GOOD_TOKEN['hex_timestamp']
-        
-        generated_path = config._generate_url_path(url_path, GOOD_TOKEN['time'])
+        generated_path = config._generate_url_path(
+            GOOD_UNICODE_TOKEN['file'],
+            FIXED_TIME,
+            )
         
         eq_(generated_path, expected_path)
 
@@ -454,7 +477,7 @@ class TestAuthTokenApp(object):
     """Acceptance tests for the auth token WGSI application."""
     
     def setUp(self):
-        self.config = TokenConfig(GOOD_TOKEN['secret'], timeout=120)
+        self.config = TokenConfig(SECRET, timeout=120)
         self.app = TestApp(AuthTokenApplication(PROTECTED_DIR, self.config))
     
     def test_expired_token(self):
@@ -507,6 +530,18 @@ class TestAuthTokenApp(object):
         response = self.app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
         ok_(response.headers['X-Sendfile'].endswith(SUB_DIRECTORY_FILE))
+    
+    def test_unicode_file_name_in_existing_file(self):
+        """Unicode characters are supported in file names."""
+        config = TokenConfig(SECRET, timeout=120, encoding="utf8")
+        app = TestApp(AuthTokenApplication(PROTECTED_DIR, config))
+        
+        url_path = config.get_url_path(GOOD_UNICODE_TOKEN['file'])
+        urlencoded_file = GOOD_UNICODE_TOKEN['urlencoded_file']
+        
+        response = app.get(url_path, status=200)
+        ok_("X-Sendfile" in response.headers)
+        ok_(response.headers['X-Sendfile'].endswith(urlencoded_file))
 
 
 #}
