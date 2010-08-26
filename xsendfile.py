@@ -223,7 +223,7 @@ class TokenConfig(object):
     
     """
     
-    def __init__(self, secret, hash_algo="md5", timeout=120):
+    def __init__(self, secret, hash_algo="md5", timeout=120, encoding="ascii"):
         """
         
         :param secret: The secret string shared by the application that
@@ -234,10 +234,14 @@ class TokenConfig(object):
         :type hash_algo: :class:`basestring` or callable
         :param timeout: The time during which a token is valid (in seconds)
         :type timeout: :class:`int`
+        :param encoding: The character encoding used by the ``secret`` and
+            the strings whose digest will be computed.
+        :type encoding: :class:`basestring`
         
         """
         self._secret = secret
         self._timeout = timedelta(seconds=timeout)
+        self._encoding = encoding
         
         # Validating the hashing algorithm:
         if hasattr(hash_algo, "__call__"):
@@ -248,7 +252,7 @@ class TokenConfig(object):
             # It must be an string representing a built-in hashing algorithm,
             # otherwise an exception would be raised:
             hashlib.new(hash_algo)
-            self._hash_algo = _BuiltinHashWrapper(hash_algo)
+            self._hash_algo = _BuiltinHashWrapper(hash_algo, encoding)
     
     def is_valid_digest(self, digest, file_name, time):
         """
@@ -300,11 +304,14 @@ class TokenConfig(object):
     #{ Internal utilities
     
     def _generate_url_path(self, file_name, time):
-        """Generate protected URL path for ``file_name``"""
+        """Generate protected URL path for ``file_name``."""
         hex_timestamp = self._to_hex_timestamp(time)
         digest = self._get_digest(file_name, hex_timestamp)
         
-        url_path = "/%s-%s/%s" % (digest, hex_timestamp, file_name)
+        encoded_file_name = file_name.encode(self._encoding)
+        urlencoded_file_name = quote(encoded_file_name)
+        
+        url_path = "/%s-%s/%s" % (digest, hex_timestamp, urlencoded_file_name)
         return url_path
     
     def _get_digest(self, file_name, hex_timestamp):
@@ -319,7 +326,9 @@ class TokenConfig(object):
         string.
         
         """
-        return "%x" % mktime(time.timetuple())
+        hex_time = "%x" % mktime(time.timetuple())
+        
+        return hex_time
     
     #}
 
@@ -327,14 +336,18 @@ class TokenConfig(object):
 class _BuiltinHashWrapper(object):
     """Wrapper for the built-in hash functions in the standard library."""
     
-    def __init__(self, algorithm_name):
+    def __init__(self, algorithm_name, encoding):
         self._algorithm_name = algorithm_name
+        self._encoding = encoding
     
     def __call__(self, contents):
+        encoded_contents = contents.encode(self._encoding)
+        
         hash = hashlib.new(self._algorithm_name)
-        hash.update(contents)
+        hash.update(encoded_contents)
         
         digest = hash.hexdigest()
+        
         return digest
 
 

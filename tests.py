@@ -20,6 +20,7 @@ Unit test suite for wsgi-xsendfile.
 
 from datetime import datetime, timedelta
 from os import path
+from time import mktime
 from urllib import quote
 
 from nose.tools import assert_false, assert_raises, eq_, ok_
@@ -65,12 +66,14 @@ EPOCH = datetime.now()
 
 
 # The properties of a token that is known to be valid:
+_good_token_time = datetime(2010, 5, 18, 13, 44, 18, 788690)
 GOOD_TOKEN = {
-    'time': datetime(2010, 5, 18, 13, 44, 18, 788690),
-    'hex_timestamp': "4bf28ba2",
     'digest': "11b98caf339fb67cf1514512298fdc67",
     'file': "foo.txt",
     'secret': "s3cr3t",
+    'time': _good_token_time,
+    # mktime() returns different values across Python versions:
+    'hex_timestamp': "%x" % mktime(_good_token_time.timetuple()),
     }
 # The path that must be generated for GOOD_TOKEN:
 GOOD_TOKEN_PATH = "/%s-%s/%s" % (GOOD_TOKEN['digest'],
@@ -398,18 +401,53 @@ class TestTokenConfig(object):
                                                         GOOD_TOKEN['time'])
         
         eq_(generated_path, GOOD_TOKEN_PATH)
+    
+    def test_unicode_url_path_generation(self):
+        """
+        Non-ASCII URL paths are supported.
+        
+        """
+        config = TokenConfig(GOOD_TOKEN['secret'], timeout=120, encoding="utf8")
+        
+        # "你好/mañana.pdf":
+        url_path = u"\xe4\xbd\xa0\xe5\xa5\xbd/ma\xc3\xb1ana.pdf"
+        
+        expected_path = "/42b0fb830175ec447d44b694ca36291f-%s" \
+                        "/%%C3%%A4%%C2%%BD%%C2%%A0%%C3%%A5%%C2%%A5%%C2%%BD" \
+                        "/ma%%C3%%83%%C2%%B1ana.pdf"
+        expected_path %= GOOD_TOKEN['hex_timestamp']
+        
+        generated_path = config._generate_url_path(url_path, GOOD_TOKEN['time'])
+        
+        eq_(generated_path, expected_path)
 
 
 class TestHashWrapper(object):
     """Unit tests for the built-in hash wrapper."""
     
     def test_md5(self):
-        hash = _BuiltinHashWrapper("md5")
+        hash = _BuiltinHashWrapper("md5", "ascii")
         eq_(hash("hello"), "5d41402abc4b2a76b9719d911017c592")
     
     def test_sha1(self):
-        hash = _BuiltinHashWrapper("sha1")
+        hash = _BuiltinHashWrapper("sha1", "ascii")
         eq_(hash("hello"), "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
+    
+    #{ Let's now try with different character encodings:
+    
+    def test_utf8(self):
+        hash = _BuiltinHashWrapper("sha1", "utf8")
+        utf8_string = u"\xe4\xbd\xa0\xe5\xa5\xbd"
+        
+        eq_(hash(utf8_string), "990e5af8616cd9269852a1bacf7230d261e89b60")
+    
+    def test_latin1(self):
+        hash = _BuiltinHashWrapper("sha1", "latin1")
+        latin1_string = u"cambio clim\xc3\x83\xc2\xa1tico"
+        
+        eq_(hash(latin1_string), "a36e370a43215d6481e8fc6ad4a49fb9bb4ebedd")
+    
+    #}
 
 
 class TestAuthTokenApp(object):
