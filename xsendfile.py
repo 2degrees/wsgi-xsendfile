@@ -113,8 +113,9 @@ class XSendfileApplication(object):
         # Determine the requested file's name by removing any leading slash,
         # appending the file name to the root directory and finding the real
         # path:
-        file_path = environ['PATH_INFO'].lstrip("/")
-        file_path = path.join(self._root_directory, file_path)
+        relative_path = environ['PATH_INFO'].lstrip("/").decode("string_escape")
+        
+        file_path = path.join(self._root_directory, relative_path)
         file_path = path.realpath(file_path)
         
         if environ['REQUEST_METHOD'].upper() != "GET":

@@ -1,3 +1,10 @@
+Version 1.0a3 (2010-09-07)
+==========================
+
+Made it possible to cater for mod_wsgi's escaped escape characters in the
+``PATH_INFO`` when it contains non-ASCII characters.
+
+
 Version 1.0a2 (2010-08-26)
 ==========================
 
