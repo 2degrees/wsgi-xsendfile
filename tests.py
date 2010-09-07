@@ -246,23 +246,6 @@ class TestXSendfileRequests(object):
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'],
             path.join(PROTECTED_SUB_DIR, "baz.txt"))
-    
-    def test_escaped_strings(self):
-        u"""
-        Unicode characters with escape characters escaped are unescaped.
-        
-        When PATH_INFO has non-ASCII characters, mod_wsgi will pass it with
-        the escape characters escaped (e.g., u"Capitán" becomes
-        "Capit\\xc3\\xa1n" instead of "Capit\xc3\xa1n"). So we have to unescape
-        the escaped escape characters.
-        
-        End of tongue twister.
-        
-        """
-        escaped_path_info = "/\\xc2\\xa1ma\\xc3\\xb1ana!.txt"
-        response = self.app.get(escaped_path_info, status=200)
-        eq_(response.headers['X-Sendfile'],
-            path.join(PROTECTED_DIR, "%C2%A1ma%C3%B1ana%21.txt"))
 
 
 #{ Tests for the file serving applications:
