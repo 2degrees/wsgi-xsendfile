@@ -19,15 +19,16 @@ import os
 
 from setuptools import setup
 
-here = os.path.abspath(os.path.dirname(__file__))
-README = open(os.path.join(here, "README.txt")).read()
-version = open(os.path.join(here, "VERSION.txt")).readline().rstrip()
+_CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
+_README = open(os.path.join(_CURRENT_DIR, "README.txt")).read()
+_VERSION = open(os.path.join(_CURRENT_DIR, "VERSION.txt")).readline().rstrip()
 
-setup(name="xsendfile",
-      version=version,
-      description="X-Sendfile implementation in Python/WSGI",
-      long_description=README,
-      classifiers=[
+setup(
+    name="xsendfile",
+    version=_VERSION,
+    description="X-Sendfile implementation in Python/WSGI",
+    long_description=_README,
+    classifiers=[
         "Development Status :: 3 - Alpha",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
@@ -39,20 +40,17 @@ setup(name="xsendfile",
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "Topic :: Security",
         ],
-      keywords="x-sendfile xsendfile x-accel-redirect authorization token url hot-link",
-      author="Gustavo Narea (2degrees Limited)",
-      author_email="2degrees-floss@2degreesnetwork.com",
-      url="http://pythonhosted.org/xsendfile/",
-      license="BSD (http://dev.2degreesnetwork.com/p/2degrees-license.html)",
-      py_modules=["xsendfile"],
-      zip_safe=False,
-      tests_require=[
-        "coverage",
-        "nose",
-        "WebTest >= 1.2"
-        ],
-      install_requires=["Paste >= 1.7.3"],
-      test_suite="nose.collector",
-      entry_points = """\
-      """
-      )
+    keywords="x-sendfile xsendfile x-accel-redirect authorization token url hot-link",
+    author="2degrees Limited",
+    author_email="2degrees-floss@2degreesnetwork.com",
+    url="http://pythonhosted.org/xsendfile/",
+    license="BSD (http://dev.2degreesnetwork.com/p/2degrees-license.html)",
+    py_modules=["xsendfile"],
+    tests_require=[
+      "coverage",
+      "nose",
+      "WebTest >= 1.2"
+      ],
+    install_requires=["Paste >= 1.7.3"],
+    test_suite="nose.collector",
+    )
