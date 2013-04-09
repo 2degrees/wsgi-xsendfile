@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-# Copyright (c) 2010, 2degrees Limited <http://dev.2degreesnetwork.com/>.
+# Copyright (c) 2013, 2degrees Limited.
+# Copyright (c) 2010, 2degrees Limited.
 # All Rights Reserved.
 #
-# This file is part of wsgi-xsendfile <https://launchpad.net/wsgi-xsendfile>,
+# This file is part of wsgi-xsendfile <http://pythonhosted.org/xsendfile/>,
 # which is subject to the provisions of the BSD at
 # <http://dev.2degreesnetwork.com/p/2degrees-license.html>. A copy of the
 # license should accompany this distribution. THIS SOFTWARE IS PROVIDED "AS IS"
