@@ -415,17 +415,17 @@ class AuthTokenApplication(XSendfileApplication):
 #{ Exceptions
 
 
-class AuthTokenException(Exception):
+class XSendfileException(Exception):
     """Base class for exceptions raised by wsgi-xsendfile."""
     pass
 
 
-class BadRootError(AuthTokenException):
+class BadRootError(XSendfileException):
     """Exception raised when given a bad root directory to be served."""
     pass
 
 
-class BadSenderError(AuthTokenException):
+class BadSenderError(XSendfileException):
     """Exception raised when given a bad file sendeing application."""
     pass
 
