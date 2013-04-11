@@ -29,7 +29,7 @@ setup(
     description="X-Sendfile implementation in Python/WSGI",
     long_description=_README,
     classifiers=[
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: BSD License",
@@ -40,7 +40,7 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "Topic :: Security",
         ],
-    keywords="x-sendfile xsendfile x-accel-redirect authorization token url hot-link",
+    keywords="x-sendfile xsendfile x-accel authorization token url hot-link",
     author="2degrees Limited",
     author_email="2degrees-floss@2degreesnetwork.com",
     url="http://pythonhosted.org/xsendfile/",
