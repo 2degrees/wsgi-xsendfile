@@ -44,6 +44,30 @@ The following code illustrates how to use X-Sendfile from a Django view::
         return response
 
 
+Example Using WebOb (Also Applies to Pyramid, Pylons, TurboGears and Others)
+----------------------------------------------------------------------------
+
+WebOb offers out-of-the-box support for embedded WSGI applications. The
+following code illustrates how to use X-Sendfile from a controller powered by
+WebOb::
+
+    from my_framework import login_required
+    from xsendfile import XSendfileApplication
+    
+    DOCUMENT_SENDING_APP = XSendfileApplication("/srv/my-app/uploads/documents")
+    
+    @login_required
+    def download_document(request, document_name):
+        download_request = request.copy()
+        download_request.path_info = "/%s.pdf" % document_name
+        response = download_request.get_response(DOCUMENT_SENDING_APP)
+        
+        if response.status_code == 200:
+            response['Content-Disposition'] = "attachment"
+        
+        return response
+
+
 Example With Raw WSGI Applications
 ----------------------------------
 
@@ -120,6 +144,9 @@ generate responses that Nginx can interprete::
     from xsendfile import NginxSendfile, XSendfileApplication
     
     file_sender = NginxSendfile("/internal-document-uploads/")
-    DOCUMENT_SENDING_APP = XSendfileApplication("/srv/my-app/uploads/documents")
+    DOCUMENT_SENDING_APP = XSendfileApplication(
+        "/srv/my-app/uploads/documents",
+        file_sender,
+        )
 
 You'd then be able to use ``DOCUMENT_SENDING_APP`` as usual.

@@ -78,6 +78,6 @@ Contents
     :maxdepth: 2
 
     howto
-    custom_file_senders
+    file_senders
     auth_token
     api

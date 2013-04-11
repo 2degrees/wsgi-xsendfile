@@ -20,8 +20,10 @@ Authorization tokens
 ====================
 
 .. autoclass:: AuthTokenApplication
+    :show-inheritance:
 
 .. autoclass:: TokenConfig
+    :members: get_url_path
 
 
 Exceptions
