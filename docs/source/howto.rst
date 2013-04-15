@@ -19,7 +19,7 @@ do the latter, please refer to your framework's documentation.
 Example Using Django
 --------------------
 
-Django doesn't offer out-of-the-box support for WSGI applications inside Django,
+Django doesn't offer out-of-the-box support for WSGI applications,
 so you'd need to use a library like `twod.wsgi
 <http://pythonhosted.org/twod.wsgi/manual/embedded-apps.html>`_.
 
@@ -110,7 +110,7 @@ that isn't powered by a WSGI framework or library::
 Integration in Your Front-End Server
 ====================================
 
-X-Sendfile is supported outside-the-box by some servers, such as Lighttpd and
+X-Sendfile is supported out-of-the-box by some servers, such as Lighttpd and
 Nginx. With other servers, you'd need to install a third party extension.
 
 Please refer to the documentation relevant to your server, or read on if you
