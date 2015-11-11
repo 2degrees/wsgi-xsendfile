@@ -25,8 +25,7 @@ from time import mktime
 from urllib import quote
 
 from nose.tools import assert_false, assert_raises, eq_, ok_
-from webtest import TestApp
-
+from webtest import TestApp, TestRequest, TestResponse
 from xsendfile import (AuthTokenApplication, BadRootError, BadSenderError,
     _BuiltinHashWrapper, NginxSendfile, TokenConfig, XSendfileApplication,
     XSendfile)
@@ -260,7 +259,7 @@ class BaseTestFileSender(object):
     file_path_header = None
     
     def __init__(self):
-        self.app = TestApp(self.sender)
+        self.app = _TestApp(self.sender)
     
     def get_file(self, file_name, SCRIPT_NAME="", **extra_environ):
         """Request the ``file_name`` and return the response."""
@@ -270,7 +269,7 @@ class BaseTestFileSender(object):
         
         extra_environ['SCRIPT_NAME'] = SCRIPT_NAME
         path_info = "/%s" % quote(file_name.encode("utf8"))
-        
+
         return self.app.get(path_info, status=200, extra_environ=extra_environ)
     
     def verify_headers(self, response, file_attributes):
@@ -546,3 +545,20 @@ class TestAuthTokenApp(object):
 
 
 #}
+
+
+class _TestResponse(TestResponse):
+
+    @staticmethod
+    def decode_content():
+        pass
+
+
+class _TestRequest(TestRequest):
+
+    ResponseClass = _TestResponse
+
+
+class _TestApp(TestApp):
+
+    RequestClass = _TestRequest
