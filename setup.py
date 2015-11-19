@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-# Copyright (c) 2013, 2degrees Limited.
-# Copyright (c) 2010, 2degrees Limited.
+# Copyright (c) 2010-2015, 2degrees Limited.
 # All Rights Reserved.
 #
 # This file is part of wsgi-xsendfile <http://pythonhosted.org/xsendfile/>,
@@ -46,11 +45,6 @@ setup(
     url="http://pythonhosted.org/xsendfile/",
     license="BSD (http://dev.2degreesnetwork.com/p/2degrees-license.html)",
     py_modules=["xsendfile"],
-    tests_require=[
-      "coverage",
-      "nose",
-      "WebTest >= 1.2"
-      ],
-    install_requires=["Paste >= 1.7.3"],
+    install_requires=["Paste >= 2.0.2", "six >= 1.10"],
     test_suite="nose.collector",
     )

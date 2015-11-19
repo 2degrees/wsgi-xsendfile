@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-# Copyright (c) 2013, 2degrees Limited.
-# Copyright (c) 2010, 2degrees Limited.
+# Copyright (c) 2010-2015, 2degrees Limited.
 # All Rights Reserved.
 #
 # This file is part of wsgi-xsendfile <http://pythonhosted.org/xsendfile/>,
@@ -22,13 +21,19 @@ Unit test suite for wsgi-xsendfile.
 from datetime import datetime, timedelta
 from os import path
 from time import mktime
-from urllib import quote
 
 from nose.tools import assert_false, assert_raises, eq_, ok_
+from six.moves.urllib.parse import quote
 from webtest import TestApp, TestRequest, TestResponse
-from xsendfile import (AuthTokenApplication, BadRootError, BadSenderError,
-    _BuiltinHashWrapper, NginxSendfile, TokenConfig, XSendfileApplication,
-    XSendfile)
+
+from xsendfile import AuthTokenApplication
+from xsendfile import BadRootError
+from xsendfile import BadSenderError
+from xsendfile import NginxSendfile
+from xsendfile import TokenConfig
+from xsendfile import XSendfile
+from xsendfile import XSendfileApplication
+from xsendfile import _BuiltinHashWrapper
 
 
 # Short-cuts to directories in the fixtures:
@@ -44,9 +49,13 @@ NON_EXISTING_DIR = path.join(FIXTURES_DIR, "does-not-exist")
 # A short-cut to the only file in a sub-directory:
 SUB_DIRECTORY_FILE = path.join("sub-directory", "baz.txt")
 
-# Files in the protected directory:
-FILES = {
-    u'¡mañana!.txt': {'size': 42, 'type': "text/plain"},
+_NON_ASCII_FILE_NAME = u'¡mañana!.txt'
+
+_NON_LATIN1_FILE_NAME = u'是.txt'
+
+_METADATA_BY_STUB_FILE_NAME = {
+    _NON_ASCII_FILE_NAME: {'size': 42, 'type': "text/plain"},
+    _NON_LATIN1_FILE_NAME: {'size': 42, 'type': "text/plain"},
     'binary-file.png': {'size': 2326, 'type': "image/png"},
     'file with spaces.txt': {'size': 5, 'type': "text/plain"},
     'file-with-hyphens.txt': {'size': 5, 'type': "text/plain"},
@@ -57,8 +66,7 @@ FILES = {
     }
 
 
-# Hashing function that does nothing:
-USELESS_HASH_ALGO = lambda contents: contents
+_IDENTITY_HASH_ALGO = lambda contents: contents
 
 
 # The time to use as reference for the time-dependent operations.
@@ -73,31 +81,32 @@ SECRET = "s3cr3t"
 
 # The properties of a token that is known to be valid:
 
-GOOD_TOKEN = {
+_EXPECTED_ASCII_TOKEN = {
     'digest': "11b98caf339fb67cf1514512298fdc67",
     'file': "foo.txt",
     }
-# The path that must be generated for GOOD_TOKEN:
-GOOD_TOKEN_PATH = "/%s-%s/%s" % (GOOD_TOKEN['digest'],
-                                 FIXED_TIME_HEX,
-                                 GOOD_TOKEN['file'])
+_EXPECTED_ASCII_TOKEN_PATH = "/%s-%s/%s" % (
+    _EXPECTED_ASCII_TOKEN['digest'],
+    FIXED_TIME_HEX,
+    _EXPECTED_ASCII_TOKEN['file'],
+    )
 
 
-GOOD_UNICODE_TOKEN = {
+_EXPECTED_NON_ASCII_TOKEN = {
     'digest': "cf74d859aab5d1ce9bbc4a92fd91b0e2",
-    'file': u'¡mañana!.txt',
+    'file': _NON_ASCII_FILE_NAME,
     'urlencoded_file': '%C2%A1ma%C3%B1ana%21.txt',
     }
-# The path that must be generated for GOOD_TOKEN:
-GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (GOOD_UNICODE_TOKEN['digest'],
-                                         FIXED_TIME_HEX,
-                                         GOOD_UNICODE_TOKEN['file'])
+GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
+    _EXPECTED_NON_ASCII_TOKEN['digest'],
+    FIXED_TIME_HEX,
+    _EXPECTED_NON_ASCII_TOKEN['file'],
+    )
 
 
 class TestXSendfileConstructor(object):
     """
-    Unit tests for the constructor of WSGI application that implements
-    X-Sendfile.
+    Tests for the constructor of WSGI application that implements X-Sendfile.
     
     """
     
@@ -169,7 +178,7 @@ class TestXSendfileRequests(object):
     """Unit tests for the requests sent to the X-Sendfile application."""
     
     def setUp(self):
-        self.app = TestApp(XSendfileApplication(PROTECTED_DIR))
+        self.app = _TestApp(XSendfileApplication(PROTECTED_DIR))
     
     def test_non_existing_file(self):
         """
@@ -221,12 +230,21 @@ class TestXSendfileRequests(object):
         
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'], path.join(PROTECTED_DIR, "foo.txt"))
-    
+
     def test_existing_file_with_non_ascii_name(self):
-        """Files with non-ASCII names are supported."""
-        url_encoded_path = "/%s" % quote("¡mañana!.txt")
+        """URL paths are assumed to be UTF-8."""
+        url_encoded_path = "/%s" % quote(_NON_ASCII_FILE_NAME.encode('utf8'))
         response = self.app.get(url_encoded_path, status=200)
         
+        ok_("X-Sendfile" in response.headers)
+        eq_(response.headers['X-Sendfile'],
+            path.join(PROTECTED_DIR, url_encoded_path.lstrip("/")))
+
+    def test_existing_file_with_non_latin1_name(self):
+        """URL paths are assumed to be UTF-8."""
+        url_encoded_path = "/%s" % quote(_NON_LATIN1_FILE_NAME.encode('utf8'))
+        response = self.app.get(url_encoded_path, status=200)
+
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'],
             path.join(PROTECTED_DIR, url_encoded_path.lstrip("/")))
@@ -268,7 +286,7 @@ class BaseTestFileSender(object):
         extra_environ['xsendfile.root_directory'] = PROTECTED_DIR
         
         extra_environ['SCRIPT_NAME'] = SCRIPT_NAME
-        path_info = "/%s" % quote(file_name.encode("utf8"))
+        path_info = "/%s" % quote(file_name.encode('utf8'))
 
         return self.app.get(path_info, status=200, extra_environ=extra_environ)
     
@@ -282,11 +300,11 @@ class BaseTestFileSender(object):
             ok_("Content-Encoding" not in response.headers)
     
     def verify_file(self, response, file_name):
-        raise NotImplementedError
+        raise NotImplementedError()
     
     def test_downloads(self):
         """Run acceptance tests for all the known files in the fixtures."""
-        for (file_name, file_attributes) in FILES.items():
+        for (file_name, file_attributes) in _METADATA_BY_STUB_FILE_NAME.items():
             # Using a Nose test generator:
             def check():
                 response = self.get_file(file_name)
@@ -305,7 +323,7 @@ class TestXSendfileDirectServe(BaseTestFileSender):
     
     def verify_file(self, response, file_name):
         file_path = path.join(PROTECTED_DIR, file_name)
-        actual_file_contents = open(file_path).read()
+        actual_file_contents = open(file_path, 'rb').read()
         
         eq_(response.body, actual_file_contents)
 
@@ -321,8 +339,9 @@ class TestXSendfileResponse(BaseTestFileSender):
     sender = XSendfile()
     
     def verify_file(self, response, file_name):
-        file_name = file_name.encode("utf-8")
-        expected_file_path = quote(path.join(PROTECTED_DIR, file_name))
+        file_path_decoded = path.join(PROTECTED_DIR, file_name)
+        file_path = file_path_decoded.encode('utf8')
+        expected_file_path = quote(file_path)
         
         ok_(self.file_path_header in response.headers)
         eq_(response.headers[self.file_path_header], expected_file_path)
@@ -340,8 +359,8 @@ class TestNginxXSendfileResponse(BaseTestFileSender):
     sender = NginxSendfile()
     
     def verify_file(self, response, file_name):
-        file_name = file_name.encode("utf-8")
-        expected_file_path = quote("/-internal-/%s" % file_name)
+        expected_file_path_decoded = "/-internal-/%s" % file_name
+        expected_file_path = quote(expected_file_path_decoded.encode('utf8'))
         
         ok_(self.file_path_header in response.headers)
         eq_(response.headers[self.file_path_header], expected_file_path)
@@ -376,7 +395,7 @@ class TestTokenConfig(object):
     
     def test_custom_hashling_algorith(self):
         """Custom hashing functions are supported if they are callable."""
-        TokenConfig("s2cr3t", USELESS_HASH_ALGO)
+        TokenConfig("s2cr3t", _IDENTITY_HASH_ALGO)
     
     #{ Tests for the token expiration verification
     
@@ -397,17 +416,21 @@ class TestTokenConfig(object):
     #{ Tests for the token digest validation
     
     def test_validating_invalid_digest(self):
-        """Bad digests are caught."""
-        # A bad digest:
         bad_digest = "5d41402abc4b2a76b9719d911017c592"
-        assert_false(self.config.is_valid_digest(bad_digest, GOOD_TOKEN['file'],
-                                                 FIXED_TIME))
+        is_valid_digest = self.config.is_valid_digest(
+            bad_digest,
+            _EXPECTED_ASCII_TOKEN['file'],
+            FIXED_TIME,
+            )
+        assert_false(is_valid_digest)
     
     def test_validating_valid_digest(self):
-        """Good digests are obviously taken as valid."""
-        # A bad digest:
-        ok_(self.config.is_valid_digest(GOOD_TOKEN['digest'], GOOD_TOKEN['file'],
-                                        FIXED_TIME))
+        is_valid_digest = self.config.is_valid_digest(
+            _EXPECTED_ASCII_TOKEN['digest'],
+            _EXPECTED_ASCII_TOKEN['file'],
+            FIXED_TIME,
+            )
+        ok_(is_valid_digest)
     
     #}
     
@@ -419,26 +442,24 @@ class TestTokenConfig(object):
         The result is compared against a known good URL path.
         
         """
-        generated_path = self.config._generate_url_path(GOOD_TOKEN['file'],
-                                                        FIXED_TIME)
+        generated_path = self.config._generate_url_path(
+            _EXPECTED_ASCII_TOKEN['file'],
+            FIXED_TIME,
+            )
         
-        eq_(generated_path, GOOD_TOKEN_PATH)
+        eq_(generated_path, _EXPECTED_ASCII_TOKEN_PATH)
     
-    def test_unicode_url_path_generation(self):
-        """
-        Non-ASCII URL paths are supported.
-        
-        """
-        config = TokenConfig(SECRET, timeout=120, encoding="utf8")
+    def test_non_ascii_url_path_generation(self):
+        config = TokenConfig(SECRET, timeout=120)
         
         expected_path = "/%s-%s/%s" % (
-            GOOD_UNICODE_TOKEN['digest'],
+            _EXPECTED_NON_ASCII_TOKEN['digest'],
             FIXED_TIME_HEX,
-            GOOD_UNICODE_TOKEN['urlencoded_file'],
+            _EXPECTED_NON_ASCII_TOKEN['urlencoded_file'],
             )
         
         generated_path = config._generate_url_path(
-            GOOD_UNICODE_TOKEN['file'],
+            _EXPECTED_NON_ASCII_TOKEN['file'],
             FIXED_TIME,
             )
         
@@ -449,28 +470,18 @@ class TestHashWrapper(object):
     """Unit tests for the built-in hash wrapper."""
     
     def test_md5(self):
-        hash = _BuiltinHashWrapper("md5", "ascii")
-        eq_(hash("hello"), "5d41402abc4b2a76b9719d911017c592")
+        hash_ = _BuiltinHashWrapper("md5")
+        eq_(hash_("hello"), "5d41402abc4b2a76b9719d911017c592")
     
     def test_sha1(self):
-        hash = _BuiltinHashWrapper("sha1", "ascii")
-        eq_(hash("hello"), "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
+        hash_ = _BuiltinHashWrapper("sha1")
+        eq_(hash_("hello"), "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d")
     
-    #{ Let's now try with different character encodings:
-    
-    def test_utf8(self):
-        hash = _BuiltinHashWrapper("sha1", "utf8")
+    def test_non_ascii_string(self):
+        hash_ = _BuiltinHashWrapper("sha1")
         utf8_string = u"\xe4\xbd\xa0\xe5\xa5\xbd"
         
-        eq_(hash(utf8_string), "990e5af8616cd9269852a1bacf7230d261e89b60")
-    
-    def test_latin1(self):
-        hash = _BuiltinHashWrapper("sha1", "latin1")
-        latin1_string = u"cambio clim\xc3\x83\xc2\xa1tico"
-        
-        eq_(hash(latin1_string), "a36e370a43215d6481e8fc6ad4a49fb9bb4ebedd")
-    
-    #}
+        eq_(hash_(utf8_string), "990e5af8616cd9269852a1bacf7230d261e89b60")
 
 
 class TestAuthTokenApp(object):
@@ -478,12 +489,12 @@ class TestAuthTokenApp(object):
     
     def setUp(self):
         self.config = TokenConfig(SECRET, timeout=120)
-        self.app = TestApp(AuthTokenApplication(PROTECTED_DIR, self.config))
+        self.app = _TestApp(AuthTokenApplication(PROTECTED_DIR, self.config))
     
     def test_expired_token(self):
         """Files with expired tokens are not served; 410 response is given."""
         five_minutes_ago = EPOCH - timedelta(minutes=5)
-        url_path = self.config._generate_url_path(GOOD_TOKEN['file'],
+        url_path = self.config._generate_url_path(_EXPECTED_ASCII_TOKEN['file'],
                                                   five_minutes_ago)
         
         self.app.get(url_path, status=410)
@@ -491,8 +502,10 @@ class TestAuthTokenApp(object):
     def test_invalid_digest(self):
         """Files with invalid digests are not served; 404 response is given."""
         # Let's change a few characters in the digest part of the URL:
-        good_url_path = self.config._generate_url_path(GOOD_TOKEN['file'],
-                                                       datetime.now())
+        good_url_path = self.config._generate_url_path(
+            _EXPECTED_ASCII_TOKEN['file'],
+            datetime.now(),
+            )
         bad_url_path = good_url_path[:3] + "xyz" + good_url_path[6:]
         
         self.app.get(bad_url_path, status=404)
@@ -503,22 +516,26 @@ class TestAuthTokenApp(object):
         
         """
         bad_timestamp = "xyz"
-        url_path = "/%s-%s/%s" % (GOOD_TOKEN['digest'], bad_timestamp,
-                                  GOOD_TOKEN['file'])
+        url_path = "/%s-%s/%s" % (
+            _EXPECTED_ASCII_TOKEN['digest'],
+            bad_timestamp,
+            _EXPECTED_ASCII_TOKEN['file'],
+            )
         
         self.app.get(url_path, status=404)
     
     def test_no_token(self):
         """Files requestsed without token are not served; a 404 is returned."""
-        self.app.get("/%s" % GOOD_TOKEN['file'], status=404)
+        self.app.get("/%s" % _EXPECTED_ASCII_TOKEN['file'], status=404)
     
     def test_good_token_and_existing_file(self):
         """Existing files requested with valid token are served."""
-        url_path = self.config.get_url_path(GOOD_TOKEN['file'])
-        
+        url_path = self.config.get_url_path(_EXPECTED_ASCII_TOKEN['file'])
+
         response = self.app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
-        ok_(response.headers['X-Sendfile'].endswith(GOOD_TOKEN['file']))
+        xsendfile_value = response.headers['X-Sendfile']
+        ok_(xsendfile_value.endswith(_EXPECTED_ASCII_TOKEN['file']))
     
     def test_good_token_and_existing_file_in_sub_directory(self):
         """
@@ -531,14 +548,14 @@ class TestAuthTokenApp(object):
         ok_("X-Sendfile" in response.headers)
         ok_(response.headers['X-Sendfile'].endswith(SUB_DIRECTORY_FILE))
     
-    def test_unicode_file_name_in_existing_file(self):
+    def test_existing_file_with_non_ascii_characters(self):
         """Unicode characters are supported in file names."""
-        config = TokenConfig(SECRET, timeout=120, encoding="utf8")
-        app = TestApp(AuthTokenApplication(PROTECTED_DIR, config))
-        
-        url_path = config.get_url_path(GOOD_UNICODE_TOKEN['file'])
-        urlencoded_file = GOOD_UNICODE_TOKEN['urlencoded_file']
-        
+        config = TokenConfig(SECRET, timeout=120)
+        app = _TestApp(AuthTokenApplication(PROTECTED_DIR, config))
+
+        url_path = config.get_url_path(_EXPECTED_NON_ASCII_TOKEN['file'])
+        urlencoded_file = _EXPECTED_NON_ASCII_TOKEN['urlencoded_file']
+
         response = app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
         ok_(response.headers['X-Sendfile'].endswith(urlencoded_file))
@@ -562,3 +579,6 @@ class _TestRequest(TestRequest):
 class _TestApp(TestApp):
 
     RequestClass = _TestRequest
+
+    def __init__(self, *args, **kwargs):
+        super(_TestApp, self).__init__(lint=False, *args, **kwargs)

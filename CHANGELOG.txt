@@ -1,3 +1,10 @@
+Version 1.0rc1 (unreleased)
+===========================
+
+- Added support for Python 3.4 or newer.
+- Dropped ability to specify custom encoding in :class:`~xsendfile.TokenConfig`.
+
+
 Version 1.0b1 (2013-04-09)
 ==========================
 
