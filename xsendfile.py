@@ -91,7 +91,7 @@ class XSendfileApplication(object):
         elif file_sender == "serve":
             sender = self.serve_file
 
-        elif hasattr(file_sender, "__call__"):
+        elif callable(file_sender):
             # The sender is a WSGI application.
             # Not using callable() for forward compatibility with Py3k.
             sender = file_sender
