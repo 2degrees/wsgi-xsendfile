@@ -93,7 +93,6 @@ class XSendfileApplication(object):
 
         elif callable(file_sender):
             # The sender is a WSGI application.
-            # Not using callable() for forward compatibility with Py3k.
             sender = file_sender
 
         else:
