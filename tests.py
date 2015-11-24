@@ -17,7 +17,7 @@
 Unit test suite for wsgi-xsendfile.
 
 """
-
+from contextlib import closing
 from datetime import datetime, timedelta
 from os import path
 from time import mktime
@@ -70,11 +70,12 @@ _IDENTITY_HASH_ALGO = lambda contents: contents
 
 
 # The time to use as reference for the time-dependent operations.
-EPOCH = datetime.now()
+_EPOCH = datetime.now()
 
 # Time to use as reference in all the tests:
-FIXED_TIME = datetime(2010, 5, 18, 13, 44, 18, 788690)
-FIXED_TIME_HEX = "%x" % mktime(FIXED_TIME.timetuple())
+_FIXED_TIME = datetime(2010, 5, 18, 13, 44, 18, 788690)
+_FIXED_TIME_DEC = mktime(_FIXED_TIME.timetuple())
+_FIXED_TIME_HEX = "%x" % int(_FIXED_TIME_DEC)
 
 # The shared secret to be used in all the auth token tests:
 SECRET = "s3cr3t"
@@ -87,7 +88,7 @@ _EXPECTED_ASCII_TOKEN = {
     }
 _EXPECTED_ASCII_TOKEN_PATH = "/%s-%s/%s" % (
     _EXPECTED_ASCII_TOKEN['digest'],
-    FIXED_TIME_HEX,
+    _FIXED_TIME_HEX,
     _EXPECTED_ASCII_TOKEN['file'],
     )
 
@@ -99,7 +100,7 @@ _EXPECTED_NON_ASCII_TOKEN = {
     }
 GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
     _EXPECTED_NON_ASCII_TOKEN['digest'],
-    FIXED_TIME_HEX,
+    _FIXED_TIME_HEX,
     _EXPECTED_NON_ASCII_TOKEN['file'],
     )
 
@@ -323,7 +324,8 @@ class TestXSendfileDirectServe(BaseTestFileSender):
     
     def verify_file(self, response, file_name):
         file_path = path.join(PROTECTED_DIR, file_name)
-        actual_file_contents = open(file_path, 'rb').read()
+        with closing(open(file_path, 'rb')) as file_:
+            actual_file_contents = file_.read()
         
         eq_(response.body, actual_file_contents)
 
@@ -401,7 +403,7 @@ class TestTokenConfig(object):
     
     def test_expired_token(self):
         """Expired tokens must be caught."""
-        five_minutes_ago = EPOCH - timedelta(minutes=5)
+        five_minutes_ago = _EPOCH - timedelta(minutes=5)
         assert_false(self.config.is_current(five_minutes_ago))
     
     def test_current_token(self):
@@ -410,7 +412,7 @@ class TestTokenConfig(object):
     
     def test_future_token(self):
         """Future tokens are accepted."""
-        five_hours_later = EPOCH + timedelta(hours=5)
+        five_hours_later = _EPOCH + timedelta(hours=5)
         ok_(self.config.is_current(five_hours_later))
     
     #{ Tests for the token digest validation
@@ -420,7 +422,7 @@ class TestTokenConfig(object):
         is_valid_digest = self.config.is_valid_digest(
             bad_digest,
             _EXPECTED_ASCII_TOKEN['file'],
-            FIXED_TIME,
+            _FIXED_TIME,
             )
         assert_false(is_valid_digest)
     
@@ -428,7 +430,7 @@ class TestTokenConfig(object):
         is_valid_digest = self.config.is_valid_digest(
             _EXPECTED_ASCII_TOKEN['digest'],
             _EXPECTED_ASCII_TOKEN['file'],
-            FIXED_TIME,
+            _FIXED_TIME,
             )
         ok_(is_valid_digest)
     
@@ -444,7 +446,7 @@ class TestTokenConfig(object):
         """
         generated_path = self.config._generate_url_path(
             _EXPECTED_ASCII_TOKEN['file'],
-            FIXED_TIME,
+            _FIXED_TIME,
             )
         
         eq_(generated_path, _EXPECTED_ASCII_TOKEN_PATH)
@@ -454,13 +456,13 @@ class TestTokenConfig(object):
         
         expected_path = "/%s-%s/%s" % (
             _EXPECTED_NON_ASCII_TOKEN['digest'],
-            FIXED_TIME_HEX,
+            _FIXED_TIME_HEX,
             _EXPECTED_NON_ASCII_TOKEN['urlencoded_file'],
             )
         
         generated_path = config._generate_url_path(
             _EXPECTED_NON_ASCII_TOKEN['file'],
-            FIXED_TIME,
+            _FIXED_TIME,
             )
         
         eq_(generated_path, expected_path)
@@ -493,7 +495,7 @@ class TestAuthTokenApp(object):
     
     def test_expired_token(self):
         """Files with expired tokens are not served; 410 response is given."""
-        five_minutes_ago = EPOCH - timedelta(minutes=5)
+        five_minutes_ago = _EPOCH - timedelta(minutes=5)
         url_path = self.config._generate_url_path(_EXPECTED_ASCII_TOKEN['file'],
                                                   five_minutes_ago)
         
