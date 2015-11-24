@@ -326,9 +326,9 @@ class TokenConfig(object):
         string.
 
         """
-        hex_time = "%x" % mktime(time.timetuple())
-
-        return hex_time
+        time_decimal = mktime(time.timetuple())
+        time_hex = "%x" % int(time_decimal)
+        return time_hex
 
     #}
 
