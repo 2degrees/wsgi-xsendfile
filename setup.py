@@ -19,7 +19,7 @@ import os
 from setuptools import setup
 
 _CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
-_README = open(os.path.join(_CURRENT_DIR, "README.txt")).read()
+_README = open(os.path.join(_CURRENT_DIR, "README.rst")).read()
 _VERSION = open(os.path.join(_CURRENT_DIR, "VERSION.txt")).readline().rstrip()
 
 setup(
