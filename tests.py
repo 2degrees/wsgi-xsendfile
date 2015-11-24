@@ -37,17 +37,17 @@ from xsendfile import _BuiltinHashWrapper
 
 
 # Short-cuts to directories in the fixtures:
-ROOT_DIR = path.dirname(__file__)
-FIXTURES_DIR = path.join(ROOT_DIR, "test-fixtures")
-PROTECTED_DIR = path.join(FIXTURES_DIR, "protected-directory")
-PROTECTED_SUB_DIR = path.join(PROTECTED_DIR, "sub-directory")
-UNPROTECTED_DIR = path.join(FIXTURES_DIR, "unprotected-directory")
-PROTECTED_DIR_SYMLINK = path.join(FIXTURES_DIR, "protected-directory-link")
-NON_EXISTING_DIR = path.join(FIXTURES_DIR, "does-not-exist")
+_ROOT_DIR = path.dirname(__file__)
+_FIXTURES_DIR = path.join(_ROOT_DIR, "test-fixtures")
+_PROTECTED_DIR = path.join(_FIXTURES_DIR, "protected-directory")
+_PROTECTED_SUB_DIR = path.join(_PROTECTED_DIR, "sub-directory")
+_UNPROTECTED_DIR = path.join(_FIXTURES_DIR, "unprotected-directory")
+_PROTECTED_DIR_SYMLINK = path.join(_FIXTURES_DIR, "protected-directory-link")
+_NON_EXISTING_DIR = path.join(_FIXTURES_DIR, "does-not-exist")
 
 
 # A short-cut to the only file in a sub-directory:
-SUB_DIRECTORY_FILE = path.join("sub-directory", "baz.txt")
+_SUB_DIRECTORY_FILE = path.join("sub-directory", "baz.txt")
 
 _NON_ASCII_FILE_NAME = u'¡mañana!.txt'
 
@@ -62,7 +62,7 @@ _METADATA_BY_STUB_FILE_NAME = {
     'foo.txt': {'size': 11, 'type': "text/plain"},
     'foo.txt.gz': {'size': 31, 'type': "text/plain", 'encoding': "gzip"},
     'no-extension': {'size': 5, 'type': "application/octet-stream"},
-    SUB_DIRECTORY_FILE: {'size': 12, 'type': "text/plain"},
+    _SUB_DIRECTORY_FILE: {'size': 12, 'type': "text/plain"},
     }
 
 
@@ -78,7 +78,7 @@ _FIXED_TIME_DEC = mktime(_FIXED_TIME.timetuple())
 _FIXED_TIME_HEX = "%x" % int(_FIXED_TIME_DEC)
 
 # The shared secret to be used in all the auth token tests:
-SECRET = "s3cr3t"
+_SECRET = "s3cr3t"
 
 # The properties of a token that is known to be valid:
 
@@ -98,7 +98,7 @@ _EXPECTED_NON_ASCII_TOKEN = {
     'file': _NON_ASCII_FILE_NAME,
     'urlencoded_file': '%C2%A1ma%C3%B1ana%21.txt',
     }
-GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
+_GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
     _EXPECTED_NON_ASCII_TOKEN['digest'],
     _FIXED_TIME_HEX,
     _EXPECTED_NON_ASCII_TOKEN['file'],
@@ -113,11 +113,15 @@ class TestXSendfileConstructor(object):
     
     def test_non_existing_dir(self):
         """Non-existing directories are not acceptable."""
-        assert_raises(BadRootError, XSendfileApplication, NON_EXISTING_DIR)
+        assert_raises(BadRootError, XSendfileApplication, _NON_EXISTING_DIR)
     
     def test_symlinked_dir(self):
         """The root directory must not be (in) a symbolic link."""
-        assert_raises(BadRootError, XSendfileApplication, PROTECTED_DIR_SYMLINK)
+        assert_raises(
+            BadRootError,
+            XSendfileApplication,
+            _PROTECTED_DIR_SYMLINK,
+            )
     
     def test_relative_dir(self):
         """The root directory must not be given as a relative path."""
@@ -125,23 +129,23 @@ class TestXSendfileConstructor(object):
     
     def test_file_dir(self):
         """The root directory must not be a file."""
-        protected_file = path.join(PROTECTED_DIR, "foo.txt")
+        protected_file = path.join(_PROTECTED_DIR, "foo.txt")
         assert_raises(BadRootError, XSendfileApplication, protected_file)
     
     def test_existing_dir(self):
         """The root directory is valid if it exists and is not a symlink."""
-        XSendfileApplication(PROTECTED_DIR)
+        XSendfileApplication(_PROTECTED_DIR)
     
     def test_trailing_slashes(self):
         """Any trailing slash is removed from the path to the root directory."""
-        app = XSendfileApplication(path.join(PROTECTED_DIR, ""))
-        eq_(app._root_directory, PROTECTED_DIR)
+        app = XSendfileApplication(path.join(_PROTECTED_DIR, ""))
+        eq_(app._root_directory, _PROTECTED_DIR)
     
     #{ Test senders
     
     def test_serve_sender(self):
         """The sender "serve" serves the files by itself."""
-        app = XSendfileApplication(PROTECTED_DIR, "serve")
+        app = XSendfileApplication(_PROTECTED_DIR, "serve")
         eq_(app._sender, XSendfileApplication.serve_file)
     
     def test_standard_sender(self):
@@ -149,7 +153,7 @@ class TestXSendfileConstructor(object):
         The sender "standard" sends the file using the X-Sendfile normally.
         
         """
-        app = XSendfileApplication(PROTECTED_DIR, "standard")
+        app = XSendfileApplication(_PROTECTED_DIR, "standard")
         ok_(isinstance(app._sender, XSendfile))
     
     def test_nginx_sender(self):
@@ -158,18 +162,18 @@ class TestXSendfileConstructor(object):
         X-Sendfile.
         
         """
-        app = XSendfileApplication(PROTECTED_DIR, "nginx")
+        app = XSendfileApplication(_PROTECTED_DIR, "nginx")
         ok_(isinstance(app._sender, NginxSendfile))
     
     def test_custom_sender(self):
         """A custom sender callable can be used."""
         sender = lambda: None
-        app = XSendfileApplication(PROTECTED_DIR, sender)
+        app = XSendfileApplication(_PROTECTED_DIR, sender)
         eq_(app._sender, sender)
     
     def test_bad_sender(self):
         """Invalid senders are caught."""
-        assert_raises(BadSenderError, XSendfileApplication, PROTECTED_DIR,
+        assert_raises(BadSenderError, XSendfileApplication, _PROTECTED_DIR,
                       "non-existing")
     
     #}
@@ -179,7 +183,7 @@ class TestXSendfileRequests(object):
     """Unit tests for the requests sent to the X-Sendfile application."""
     
     def setUp(self):
-        self.app = _TestApp(XSendfileApplication(PROTECTED_DIR))
+        self.app = _TestApp(XSendfileApplication(_PROTECTED_DIR))
     
     def test_non_existing_file(self):
         """
@@ -230,7 +234,10 @@ class TestXSendfileRequests(object):
         response = self.app.get("/foo.txt", status=200)
         
         ok_("X-Sendfile" in response.headers)
-        eq_(response.headers['X-Sendfile'], path.join(PROTECTED_DIR, "foo.txt"))
+        eq_(
+            response.headers['X-Sendfile'],
+            path.join(_PROTECTED_DIR, "foo.txt"),
+            )
 
     def test_existing_file_with_non_ascii_name(self):
         """URL paths are assumed to be UTF-8."""
@@ -239,7 +246,7 @@ class TestXSendfileRequests(object):
         
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'],
-            path.join(PROTECTED_DIR, url_encoded_path.lstrip("/")))
+            path.join(_PROTECTED_DIR, url_encoded_path.lstrip("/")))
 
     def test_existing_file_with_non_latin1_name(self):
         """URL paths are assumed to be UTF-8."""
@@ -248,7 +255,7 @@ class TestXSendfileRequests(object):
 
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'],
-            path.join(PROTECTED_DIR, url_encoded_path.lstrip("/")))
+            path.join(_PROTECTED_DIR, url_encoded_path.lstrip("/")))
     
     def test_existing_file_with_method_other_than_get(self):
         """Only GET requests are supported."""
@@ -264,7 +271,7 @@ class TestXSendfileRequests(object):
         
         ok_("X-Sendfile" in response.headers)
         eq_(response.headers['X-Sendfile'],
-            path.join(PROTECTED_SUB_DIR, "baz.txt"))
+            path.join(_PROTECTED_SUB_DIR, "baz.txt"))
 
 
 #{ Tests for the file serving applications:
@@ -282,9 +289,9 @@ class BaseTestFileSender(object):
     
     def get_file(self, file_name, SCRIPT_NAME="", **extra_environ):
         """Request the ``file_name`` and return the response."""
-        absolute_path_to_file = path.join(PROTECTED_DIR, file_name)
+        absolute_path_to_file = path.join(_PROTECTED_DIR, file_name)
         extra_environ['xsendfile.requested_file'] = absolute_path_to_file
-        extra_environ['xsendfile.root_directory'] = PROTECTED_DIR
+        extra_environ['xsendfile.root_directory'] = _PROTECTED_DIR
         
         extra_environ['SCRIPT_NAME'] = SCRIPT_NAME
         path_info = "/%s" % quote(file_name.encode('utf8'))
@@ -323,7 +330,7 @@ class TestXSendfileDirectServe(BaseTestFileSender):
     sender = staticmethod(XSendfileApplication.serve_file)
     
     def verify_file(self, response, file_name):
-        file_path = path.join(PROTECTED_DIR, file_name)
+        file_path = path.join(_PROTECTED_DIR, file_name)
         with closing(open(file_path, 'rb')) as file_:
             actual_file_contents = file_.read()
         
@@ -341,7 +348,7 @@ class TestXSendfileResponse(BaseTestFileSender):
     sender = XSendfile()
     
     def verify_file(self, response, file_name):
-        file_path_decoded = path.join(PROTECTED_DIR, file_name)
+        file_path_decoded = path.join(_PROTECTED_DIR, file_name)
         file_path = file_path_decoded.encode('utf8')
         expected_file_path = quote(file_path)
         
@@ -383,7 +390,7 @@ class TestTokenConfig(object):
     """Unit tests for the the token configuration."""
     
     def setUp(self):
-        self.config = TokenConfig(SECRET, timeout=120)
+        self.config = TokenConfig(_SECRET, timeout=120)
     
     #{ Checking the hashing algorithm validation in the constructor
     
@@ -452,7 +459,7 @@ class TestTokenConfig(object):
         eq_(generated_path, _EXPECTED_ASCII_TOKEN_PATH)
     
     def test_non_ascii_url_path_generation(self):
-        config = TokenConfig(SECRET, timeout=120)
+        config = TokenConfig(_SECRET, timeout=120)
         
         expected_path = "/%s-%s/%s" % (
             _EXPECTED_NON_ASCII_TOKEN['digest'],
@@ -490,8 +497,8 @@ class TestAuthTokenApp(object):
     """Acceptance tests for the auth token WGSI application."""
     
     def setUp(self):
-        self.config = TokenConfig(SECRET, timeout=120)
-        self.app = _TestApp(AuthTokenApplication(PROTECTED_DIR, self.config))
+        self.config = TokenConfig(_SECRET, timeout=120)
+        self.app = _TestApp(AuthTokenApplication(_PROTECTED_DIR, self.config))
     
     def test_expired_token(self):
         """Files with expired tokens are not served; 410 response is given."""
@@ -544,16 +551,16 @@ class TestAuthTokenApp(object):
         Existing files in a sub-directory requested with valid token are served.
         
         """
-        url_path = self.config.get_url_path(SUB_DIRECTORY_FILE)
+        url_path = self.config.get_url_path(_SUB_DIRECTORY_FILE)
         
         response = self.app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
-        ok_(response.headers['X-Sendfile'].endswith(SUB_DIRECTORY_FILE))
+        ok_(response.headers['X-Sendfile'].endswith(_SUB_DIRECTORY_FILE))
     
     def test_existing_file_with_non_ascii_characters(self):
         """Unicode characters are supported in file names."""
-        config = TokenConfig(SECRET, timeout=120)
-        app = _TestApp(AuthTokenApplication(PROTECTED_DIR, config))
+        config = TokenConfig(_SECRET, timeout=120)
+        app = _TestApp(AuthTokenApplication(_PROTECTED_DIR, config))
 
         url_path = config.get_url_path(_EXPECTED_NON_ASCII_TOKEN['file'])
         urlencoded_file = _EXPECTED_NON_ASCII_TOKEN['urlencoded_file']
