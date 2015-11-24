@@ -19,6 +19,6 @@ http://pythonhosted.org/xsendfile/
     :target: https://coveralls.io/r/2degrees/wsgi-xsendfile?branch=master
     :alt: Coverage Status
 
-.. image:: https://img.shields.io/pypi/dm/wsgi-xsendfile.svg
-    :target: https://pypi.python.org/pypi/wsgi-xsendfile/
+.. image:: https://img.shields.io/pypi/dm/xsendfile.svg
+    :target: https://pypi.python.org/pypi/xsendfile/
     :alt: Downloads
