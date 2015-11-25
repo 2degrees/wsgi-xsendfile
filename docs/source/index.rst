@@ -29,9 +29,9 @@ A replacement for Apache's `mod-auth-token
 application is also part of the distribution. It can be used along with any
 Web application, even if it's not written in Python.
 
-Python 2.5-2.7 is supported, and the WSGI applications provided by this library
-will work with any WSGI application, like those powered by Django, TurboGears,
-Pylons, etc.
+Python v2.7 and v3.3+ are supported, and the WSGI applications provided by this
+library will work with any WSGI application, like those powered by Django,
+TurboGears, Pylons, etc.
 
 The following pseudo example illustrates how it can be used::
 
@@ -81,3 +81,4 @@ Contents
     file_senders
     auth_token
     api
+    changelog
