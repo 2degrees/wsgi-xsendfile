@@ -82,26 +82,21 @@ _SECRET = "s3cr3t"
 
 # The properties of a token that is known to be valid:
 
-_EXPECTED_ASCII_TOKEN = {
-    'digest': "11b98caf339fb67cf1514512298fdc67",
-    'file': "foo.txt",
-    }
+_EXPECTED_ASCII_TOKEN_FILE_NAME = "foo.txt"
+_EXPECTED_ASCII_TOKEN_DIGEST = "11b98caf339fb67cf1514512298fdc67"
 _EXPECTED_ASCII_TOKEN_PATH = "/%s-%s/%s" % (
-    _EXPECTED_ASCII_TOKEN['digest'],
+    _EXPECTED_ASCII_TOKEN_DIGEST,
     _FIXED_TIME_HEX,
-    _EXPECTED_ASCII_TOKEN['file'],
+    _EXPECTED_ASCII_TOKEN_FILE_NAME,
     )
 
 
-_EXPECTED_NON_ASCII_TOKEN = {
-    'digest': "cf74d859aab5d1ce9bbc4a92fd91b0e2",
-    'file': _NON_ASCII_FILE_NAME,
-    'urlencoded_file': '%C2%A1ma%C3%B1ana%21.txt',
-    }
+_EXPECTED_NON_ASCII_TOKEN_DIGEST = "cf74d859aab5d1ce9bbc4a92fd91b0e2"
+_EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED = "%C2%A1ma%C3%B1ana%21.txt"
 _GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
-    _EXPECTED_NON_ASCII_TOKEN['digest'],
+    _EXPECTED_NON_ASCII_TOKEN_DIGEST,
     _FIXED_TIME_HEX,
-    _EXPECTED_NON_ASCII_TOKEN['file'],
+    _NON_ASCII_FILE_NAME,
     )
 
 
@@ -428,15 +423,15 @@ class TestTokenConfig(object):
         bad_digest = "5d41402abc4b2a76b9719d911017c592"
         is_valid_digest = self.config.is_valid_digest(
             bad_digest,
-            _EXPECTED_ASCII_TOKEN['file'],
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
             _FIXED_TIME,
             )
         assert_false(is_valid_digest)
     
     def test_validating_valid_digest(self):
         is_valid_digest = self.config.is_valid_digest(
-            _EXPECTED_ASCII_TOKEN['digest'],
-            _EXPECTED_ASCII_TOKEN['file'],
+            _EXPECTED_ASCII_TOKEN_DIGEST,
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
             _FIXED_TIME,
             )
         ok_(is_valid_digest)
@@ -452,7 +447,7 @@ class TestTokenConfig(object):
         
         """
         generated_path = self.config._generate_url_path(
-            _EXPECTED_ASCII_TOKEN['file'],
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
             _FIXED_TIME,
             )
         
@@ -462,13 +457,13 @@ class TestTokenConfig(object):
         config = TokenConfig(_SECRET, timeout=120)
         
         expected_path = "/%s-%s/%s" % (
-            _EXPECTED_NON_ASCII_TOKEN['digest'],
+            _EXPECTED_NON_ASCII_TOKEN_DIGEST,
             _FIXED_TIME_HEX,
-            _EXPECTED_NON_ASCII_TOKEN['urlencoded_file'],
+            _EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED,
             )
         
         generated_path = config._generate_url_path(
-            _EXPECTED_NON_ASCII_TOKEN['file'],
+            _NON_ASCII_FILE_NAME,
             _FIXED_TIME,
             )
         
@@ -503,8 +498,10 @@ class TestAuthTokenApp(object):
     def test_expired_token(self):
         """Files with expired tokens are not served; 410 response is given."""
         five_minutes_ago = _EPOCH - timedelta(minutes=5)
-        url_path = self.config._generate_url_path(_EXPECTED_ASCII_TOKEN['file'],
-                                                  five_minutes_ago)
+        url_path = self.config._generate_url_path(
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
+            five_minutes_ago,
+            )
         
         self.app.get(url_path, status=410)
     
@@ -512,7 +509,7 @@ class TestAuthTokenApp(object):
         """Files with invalid digests are not served; 404 response is given."""
         # Let's change a few characters in the digest part of the URL:
         good_url_path = self.config._generate_url_path(
-            _EXPECTED_ASCII_TOKEN['file'],
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
             datetime.now(),
             )
         bad_url_path = good_url_path[:3] + "xyz" + good_url_path[6:]
@@ -526,25 +523,25 @@ class TestAuthTokenApp(object):
         """
         bad_timestamp = "xyz"
         url_path = "/%s-%s/%s" % (
-            _EXPECTED_ASCII_TOKEN['digest'],
+            _EXPECTED_ASCII_TOKEN_DIGEST,
             bad_timestamp,
-            _EXPECTED_ASCII_TOKEN['file'],
+            _EXPECTED_ASCII_TOKEN_FILE_NAME,
             )
         
         self.app.get(url_path, status=404)
     
     def test_no_token(self):
         """Files requestsed without token are not served; a 404 is returned."""
-        self.app.get("/%s" % _EXPECTED_ASCII_TOKEN['file'], status=404)
+        self.app.get("/%s" % _EXPECTED_ASCII_TOKEN_FILE_NAME, status=404)
     
     def test_good_token_and_existing_file(self):
         """Existing files requested with valid token are served."""
-        url_path = self.config.get_url_path(_EXPECTED_ASCII_TOKEN['file'])
+        url_path = self.config.get_url_path(_EXPECTED_ASCII_TOKEN_FILE_NAME)
 
         response = self.app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
         xsendfile_value = response.headers['X-Sendfile']
-        ok_(xsendfile_value.endswith(_EXPECTED_ASCII_TOKEN['file']))
+        ok_(xsendfile_value.endswith(_EXPECTED_ASCII_TOKEN_FILE_NAME))
     
     def test_good_token_and_existing_file_in_sub_directory(self):
         """
@@ -562,8 +559,8 @@ class TestAuthTokenApp(object):
         config = TokenConfig(_SECRET, timeout=120)
         app = _TestApp(AuthTokenApplication(_PROTECTED_DIR, config))
 
-        url_path = config.get_url_path(_EXPECTED_NON_ASCII_TOKEN['file'])
-        urlencoded_file = _EXPECTED_NON_ASCII_TOKEN['urlencoded_file']
+        url_path = config.get_url_path(_NON_ASCII_FILE_NAME)
+        urlencoded_file = _EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED
 
         response = app.get(url_path, status=200)
         ok_("X-Sendfile" in response.headers)
