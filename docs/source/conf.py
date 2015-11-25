@@ -44,7 +44,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'WSGI X-Sendfile'
-copyright = u'2010-2013, 2degrees Limited'
+copyright = u'2010-2015, 2degrees Limited'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
