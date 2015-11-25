@@ -4,6 +4,7 @@
 nose == 1.3.7
 WebTest == 2.0.20
 coverage == 4.0.2
+pytz == 2015.7
 
 # Development
 nose-pudb == 1.0

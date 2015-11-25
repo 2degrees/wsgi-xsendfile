@@ -23,6 +23,7 @@ from os import path
 from time import mktime
 
 from nose.tools import assert_false, assert_raises, eq_, ok_
+from pytz import utc as UTC
 from six.moves.urllib.parse import quote
 from webtest import TestApp, TestRequest, TestResponse
 
@@ -70,7 +71,7 @@ _IDENTITY_HASH_ALGO = lambda contents: contents
 _EPOCH = datetime.now()
 
 # Time to use as reference in all the tests:
-_FIXED_TIME = datetime(2010, 5, 18, 13, 44, 18, 788690)
+_FIXED_TIME = datetime(2010, 5, 18, 13, 44, 18, 788690, UTC)
 _FIXED_TIME_DEC = mktime(_FIXED_TIME.timetuple())
 _FIXED_TIME_HEX = "%x" % int(_FIXED_TIME_DEC)
 
@@ -80,14 +81,14 @@ _SECRET = "s3cr3t"
 # The properties of a token that is known to be valid:
 
 _EXPECTED_ASCII_TOKEN_FILE_NAME = "foo.txt"
-_EXPECTED_ASCII_TOKEN_DIGEST = "11b98caf339fb67cf1514512298fdc67"
+_EXPECTED_ASCII_TOKEN_DIGEST = "28111c1b85a93603dde98bfb878b90b1"
 _EXPECTED_ASCII_TOKEN_PATH = "/%s-%s/%s" % (
     _EXPECTED_ASCII_TOKEN_DIGEST,
     _FIXED_TIME_HEX,
     _EXPECTED_ASCII_TOKEN_FILE_NAME,
 )
 
-_EXPECTED_NON_ASCII_TOKEN_DIGEST = "cf74d859aab5d1ce9bbc4a92fd91b0e2"
+_EXPECTED_NON_ASCII_TOKEN_DIGEST = "12d44936bfd3e453956264a4125765f6"
 _EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED = "%C2%A1ma%C3%B1ana%21.txt"
 _GOOD_UNICODE_TOKEN_PATH = "/%s-%s/%s" % (
     _EXPECTED_NON_ASCII_TOKEN_DIGEST,
