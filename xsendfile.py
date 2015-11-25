@@ -32,7 +32,7 @@ from six.moves.urllib.parse import unquote
 
 
 __all__ = ["AuthTokenApplication", "BadRootError", "BadSenderError",
-           "NginxSendfile", "TokenConfig", "XSendfile", "XSendfileApplication"]
+    "NginxSendfile", "TokenConfig", "XSendfile", "XSendfileApplication"]
 
 
 _FORBIDDEN_RESPONSE = HTTPForbidden()
@@ -117,7 +117,7 @@ class XSendfileApplication(object):
             response = _INVALID_METHOD_RESPONSE
 
         elif (not absolute_file_path.startswith(self._root_directory) or
-              absolute_file_path == self._root_directory):
+                absolute_file_path == self._root_directory):
             # The file requested is outside of the root or it's the root itself:
             response = _FORBIDDEN_RESPONSE
 
@@ -135,7 +135,7 @@ class XSendfileApplication(object):
         absolute_file_path = path.join(
             self._root_directory,
             relative_file_path.lstrip("/"),
-            )
+        )
         absolute_file_path = path.realpath(absolute_file_path)
         return absolute_file_path
 
@@ -218,7 +218,7 @@ def _complete_headers(file_path, headers):
         headers.append(("Content-Encoding", encoding))
 
 
-#{ Auth token application
+# { Auth token application
 
 
 class TokenConfig(object):
@@ -288,7 +288,7 @@ class TokenConfig(object):
 
         return now <= deadline
 
-    def get_url_path(self, file_name):   #pragma:no cover
+    def get_url_path(self, file_name):  # pragma:no cover
         """
         Get the protected URL path for ``file_name``.
 
@@ -302,7 +302,7 @@ class TokenConfig(object):
         now = datetime.now()
         return self._generate_url_path(file_name, now)
 
-    #{ Internal utilities
+    # { Internal utilities
 
     def _generate_url_path(self, file_name, time):
         """Generate protected URL path for ``file_name``."""
@@ -330,7 +330,7 @@ class TokenConfig(object):
         time_hex = "%x" % int(time_decimal)
         return time_hex
 
-    #}
+        # }
 
 
 class _BuiltinHashWrapper(object):
@@ -421,7 +421,7 @@ def _encode_path(path_decoded):
     return path_quoted
 
 
-#{ Exceptions
+# { Exceptions
 
 
 class XSendfileException(Exception):
@@ -438,5 +438,4 @@ class BadSenderError(XSendfileException):
     """Exception raised when given a bad file sendeing application."""
     pass
 
-
-#}
+# }

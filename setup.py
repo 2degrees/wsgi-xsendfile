@@ -18,6 +18,7 @@ import os
 
 from setuptools import setup
 
+
 _CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))
 _README = open(os.path.join(_CURRENT_DIR, "README.rst")).read()
 _VERSION = open(os.path.join(_CURRENT_DIR, "VERSION.txt")).readline().rstrip()
@@ -38,7 +39,7 @@ setup(
         "Topic :: Internet :: WWW/HTTP",
         "Topic :: Internet :: WWW/HTTP :: WSGI",
         "Topic :: Security",
-        ],
+    ],
     keywords="x-sendfile xsendfile x-accel authorization token url hot-link",
     author="2degrees Limited",
     author_email="2degrees-floss@2degreesnetwork.com",
@@ -47,4 +48,4 @@ setup(
     py_modules=["xsendfile"],
     install_requires=["Paste >= 2.0.2", "six >= 1.10"],
     test_suite="nose.collector",
-    )
+)
