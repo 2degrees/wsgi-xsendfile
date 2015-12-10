@@ -394,7 +394,7 @@ class AuthTokenApplication(XSendfileApplication):
             elif not token_config.is_valid_digest(digest, file_path, time):
                 response = _NOT_FOUND_RESPONSE
             else:
-                environ['PATH_INFO'] = file_path_encoded
+                environ['PATH_INFO'] = '/' + file_path_encoded
                 response = super(AuthTokenApplication, self).__call__
 
         else:

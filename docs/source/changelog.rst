@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Version 1.0rc2 (2015-12-10)
+---------------------------
+
+- Fixed generation of URL paths in Nginx' ``X-Accel-Redirect`` header when done
+  through :class:`~xsendfile.AuthTokenApplication`.
+
+
 Version 1.0rc1 (2015-11-25)
 ---------------------------
 

@@ -528,7 +528,7 @@ class TestAuthTokenApp(object):
         self.app.get(url_path, status=404)
 
     def test_no_token(self):
-        """Files requestsed without token are not served; a 404 is returned."""
+        """Files requested without token are not served; a 404 is returned."""
         self.app.get("/%s" % _EXPECTED_ASCII_TOKEN_FILE_NAME, status=404)
 
     def test_good_token_and_existing_file(self):
@@ -536,7 +536,9 @@ class TestAuthTokenApp(object):
         url_path = self.config.get_url_path(_EXPECTED_ASCII_TOKEN_FILE_NAME)
 
         response = self.app.get(url_path, status=200)
+
         ok_("X-Sendfile" in response.headers)
+
         xsendfile_value = response.headers['X-Sendfile']
         ok_(xsendfile_value.endswith(_EXPECTED_ASCII_TOKEN_FILE_NAME))
 
@@ -548,6 +550,7 @@ class TestAuthTokenApp(object):
         url_path = self.config.get_url_path(_SUB_DIRECTORY_FILE)
 
         response = self.app.get(url_path, status=200)
+
         ok_("X-Sendfile" in response.headers)
         ok_(response.headers['X-Sendfile'].endswith(_SUB_DIRECTORY_FILE))
 
@@ -557,11 +560,27 @@ class TestAuthTokenApp(object):
         app = _TestApp(AuthTokenApplication(_PROTECTED_DIR, config))
 
         url_path = config.get_url_path(_NON_ASCII_FILE_NAME)
-        urlencoded_file = _EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED
-
         response = app.get(url_path, status=200)
+
         ok_("X-Sendfile" in response.headers)
+
+        urlencoded_file = _EXPECTED_NON_ASCII_TOKEN_FILE_NAME_ENCODED
         ok_(response.headers['X-Sendfile'].endswith(urlencoded_file))
+
+    @staticmethod
+    def test_path_info_passed_to_sender():
+        token_config = TokenConfig(_SECRET)
+        sender_app = _EnvironRecordingApp()
+        app = AuthTokenApplication(_PROTECTED_DIR, token_config, sender_app)
+        app_tester = _TestApp(app)
+
+        url_path = token_config.get_url_path(_EXPECTED_ASCII_TOKEN_FILE_NAME)
+        app_tester.get(url_path, status=200)
+
+        eq_(
+            '/' + _EXPECTED_ASCII_TOKEN_FILE_NAME,
+            sender_app.environ['PATH_INFO'],
+        )
 
 
 # }
@@ -582,3 +601,14 @@ class _TestApp(TestApp):
 
     def __init__(self, *args, **kwargs):
         super(_TestApp, self).__init__(lint=False, *args, **kwargs)
+
+
+class _EnvironRecordingApp(object):
+
+    def __init__(self):
+        self.environ = None
+
+    def __call__(self, environ, start_response):
+        self.environ = environ
+        start_response("200 OK", [])
+        return [""]
